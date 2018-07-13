@@ -72,6 +72,8 @@ def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader):
     for img in loader:
         X = img.cuda()
         Z = torch.normal(mean=torch.zeros(loader.batch_size, generator.z_size)).cuda()
+        G_optimizer.zero_grad()
+        D_optimizer.zero_grad()
 
         G_sample = generator(Z)
         D_real, D_logit_real = discriminator(X)
