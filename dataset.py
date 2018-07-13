@@ -16,8 +16,9 @@ class ResizeTransform(object):
 
 
 class Data(Dataset):
-    def __init__(self, path, transform=None):
+    def __init__(self, path, z_size, transform=None):
         self.path = Path(path)
+        self.z_size = z_size
         self.transform = transform
         self.list_files = sorted(self.path.glob('*.jpg'))
 
@@ -30,4 +31,5 @@ class Data(Dataset):
         img = self.transform(img)
         img = np.transpose(img, (2, 0, 1))
         img = img.astype(np.float32)
-        return img
+        z = np.random.uniform(-1., 1.0, size=(self.z_size,))
+        return img#, z
