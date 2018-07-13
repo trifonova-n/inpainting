@@ -72,9 +72,9 @@ def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2,
     n_g_steps = 0
     k_it = 0
 
-    for img in loader:
+    for img, Z in loader:
         X = img.cuda()
-        Z = torch.normal(mean=torch.zeros(loader.batch_size, generator.z_size)).cuda()
+        Z = Z.cuda()
         D_optimizer.zero_grad()
 
         G_sample = generator(Z)
@@ -100,8 +100,8 @@ def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2,
             n_g_steps += 1
 
         n_d_steps += 1
-        #if n_g_steps >= 10:
-        #    break
+        if n_g_steps >= 10:
+            break
 
     if callback_func is not None:
         callback_func(g_loss=G_train_loss / n_g_steps, d_loss=D_train_loss / n_d_steps)
@@ -109,7 +109,7 @@ def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2,
 
 def train(generator, discriminator, loader, n_epochs=100, k=2, callback_func=None):
     G_optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, generator.parameters()),
-                                 lr=0.0001, weight_decay=0.0001)
+                                 lr=0.0004, weight_decay=0.0001)
     D_optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, discriminator.parameters()),
                                  lr=0.0001, weight_decay=0.0001)
 

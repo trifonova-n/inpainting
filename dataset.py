@@ -31,5 +31,5 @@ class Data(Dataset):
         img = self.transform(img)
         img = np.transpose(img, (2, 0, 1))
         img = img.astype(np.float32)
-        z = np.random.uniform(-1., 1.0, size=(self.z_size,))
-        return img#, z
+        z = np.random.uniform(-1., 1.0, size=(self.z_size,)).astype(np.float32)
+        return img, z
