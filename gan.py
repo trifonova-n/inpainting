@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import numpy as np
 
 
 class GeneratorNet(torch.nn.Module):
@@ -76,6 +77,7 @@ def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2,
         X = img.cuda()
         Z = Z.cuda()
         D_optimizer.zero_grad()
+        G_optimizer.zero_grad()
 
         G_sample = generator(Z)
         D_real, D_logit_real = discriminator(X)
@@ -84,34 +86,41 @@ def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2,
         D_loss = discriminator_loss(D_real, D_fake)
         D_train_loss += D_loss.data
 
-        D_loss.backward(retain_graph=True)
+        D_loss.backward()
         D_optimizer.step()
+        n_d_steps += 1
 
         k_it += 1
 
         if k_it == k:
+            D_optimizer.zero_grad()
             G_optimizer.zero_grad()
+            Z.uniform_(-1., 1.)
+            G_sample = generator(Z)
+            #D_real, D_logit_real = discriminator(X)
+            D_fake, D_logit_fake = discriminator(G_sample)
             G_loss = generator_loss(D_fake)
             G_train_loss += G_loss.data
 
             G_loss.backward()
+            #print(np.mean(np.abs(generator.layer0.weight.grad.cpu().numpy())))
             G_optimizer.step()
             k_it = 0
             n_g_steps += 1
 
-        n_d_steps += 1
-        if n_g_steps >= 10:
+        if n_g_steps >= 10000:
             break
 
     if callback_func is not None:
+        #pass
         callback_func(g_loss=G_train_loss / n_g_steps, d_loss=D_train_loss / n_d_steps)
 
 
 def train(generator, discriminator, loader, n_epochs=100, k=2, callback_func=None):
     G_optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, generator.parameters()),
-                                 lr=0.0004, weight_decay=0.0001)
+                                 lr=0.0001)#, weight_decay=0.00001)
     D_optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, discriminator.parameters()),
-                                 lr=0.0001, weight_decay=0.0001)
+                                 lr=0.00001, weight_decay=0.1)
 
     for i in range(n_epochs):
         train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=k, callback_func=callback_func)
