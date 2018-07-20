@@ -8,11 +8,14 @@ import torch
 
 
 class ResizeTransform(object):
-    def __init__(self, output_shape=(64, 64)):
+    def __init__(self, output_shape=(64, 64), sigma=0.05):
         self.output_shape = output_shape
+        self.sigma = sigma
 
     def __call__(self, img):
-        return resize(img, self.output_shape, mode='constant')
+        img = resize(img, self.output_shape, mode='constant')
+        noise = np.random.normal(0, self.sigma, img.shape)
+        return img + noise
 
 
 class Data(Dataset):

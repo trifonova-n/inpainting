@@ -5,10 +5,10 @@ from IPython import display
 import torch
 
 
-def plot_batch(img_batch, transpose_channels=True):
+def plot_batch(img_batch, transpose_channels=True, limit=4):
     if transpose_channels:
         img_batch = np.transpose(img_batch, (0, 2, 3, 1))
-    n = img_batch.shape[0]
+    n = min(limit, img_batch.shape[0])
     ncols = int(sqrt(n))
     nrows = n // ncols
     if nrows * ncols < n:
@@ -16,7 +16,7 @@ def plot_batch(img_batch, transpose_channels=True):
 
     fig, axes = plt.subplots(nrows, ncols)
     ax = axes.ravel()
-    for i in range(img_batch.shape[0]):
+    for i in range(n):
         ax[i].get_xaxis().set_visible(False)
         ax[i].get_yaxis().set_visible(False)
         ax[i].imshow(img_batch[i])
