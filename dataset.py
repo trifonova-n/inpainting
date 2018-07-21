@@ -14,8 +14,8 @@ class ResizeTransform(object):
 
     def __call__(self, img):
         img = resize(img, self.output_shape, mode='constant')
-        noise = np.random.normal(0, self.sigma, img.shape)
-        return img + noise
+        #noise = np.random.normal(0, self.sigma, img.shape)
+        return img# + noise
 
 
 class Data(Dataset):

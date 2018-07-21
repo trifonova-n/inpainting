@@ -30,6 +30,7 @@ class PlotLossCallback(object):
         self.l_ax, self.img_ax = self.fig.subplots(1, 2)
         self.d_losses = []
         self.g_losses = []
+        self.Z = torch.Tensor(1, self.generator.z_size).cuda()
 
     def __call__(self, g_loss, d_loss):
         self.d_losses.append(d_loss)
@@ -38,8 +39,8 @@ class PlotLossCallback(object):
         d_handle, = self.l_ax.plot(self.d_losses, 'b', label="Discriminator loss")
         self.l_ax.legend(handles=[g_handle, d_handle])
 
-        Z = torch.normal(mean=torch.zeros(1, self.generator.z_size)).cuda()
-        G_sample = self.generator(Z)
+        self.Z.uniform_(-1., 1.)
+        G_sample = self.generator(self.Z)
         self.img_ax.get_xaxis().set_visible(False)
         self.img_ax.get_yaxis().set_visible(False)
         self.img_ax.imshow(np.transpose(G_sample.data.cpu().numpy(), (0, 2, 3, 1))[0])
