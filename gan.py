@@ -98,13 +98,13 @@ class Discriminator(torch.nn.Module):
         return D_prob, D_logit
 
 
-def generator_loss(D_fake):
+def generator_loss(D_fake, eps=0.0001):
     #return torch.mean(torch.log(1. - D_fake))
-    return -torch.mean(torch.log(D_fake))
+    return -torch.mean(torch.log(D_fake.clamp(eps)))
 
 
-def discriminator_loss(D_real, D_fake):
-    return -torch.mean(torch.log(D_real) + torch.log(1. - D_fake))
+def discriminator_loss(D_real, D_fake, eps=0.0001):
+    return -torch.mean(torch.log(D_real.clamp(eps)) + torch.log((1. - D_fake).clamp(eps)))
 
 
 def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2, callback_func=None):
