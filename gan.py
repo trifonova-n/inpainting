@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
+from pathlib import Path
 
 
 class GeneratorNet(torch.nn.Module):
@@ -114,6 +115,8 @@ def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2,
     n_d_steps = 0
     n_g_steps = 0
     k_it = 0
+    G_grads = []
+    D_grads = []
 
     for img, Z in loader:
         X = img.cuda()
@@ -158,7 +161,9 @@ def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2,
         callback_func(g_loss=G_train_loss / n_g_steps, d_loss=D_train_loss / n_d_steps)
 
 
-def train(generator, discriminator, loader, n_epochs=100, k=2, callback_func=None):
+def train(generator, discriminator, loader, n_epochs=100, k=2, callback_func=None, model_path='model'):
+    model_path = Path(model_path)
+    model_path.mkdir(exist_ok=True)
     G_optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, generator.parameters()),
                                  lr=0.0002, betas=(0.5, 0.999), weight_decay=0.0001)
     D_optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, discriminator.parameters()),
@@ -166,4 +171,7 @@ def train(generator, discriminator, loader, n_epochs=100, k=2, callback_func=Non
 
     for i in range(n_epochs):
         train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=k, callback_func=callback_func)
+        torch.save(generator.state_dict(), str(model_path / ('generator_%d.pth' % (i,))))
+        torch.save(discriminator.state_dict(), str(model_path / ('discriminator_%d.pth' % (i,))))
+
 
