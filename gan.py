@@ -132,6 +132,7 @@ def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2,
         D_train_loss += D_loss.data
 
         D_loss.backward()
+        D_grads.append(np.mean(np.abs(discriminator.layer1[0].weight.grad.cpu().numpy())))
         D_optimizer.step()
         n_d_steps += 1
 
@@ -148,6 +149,7 @@ def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2,
             G_train_loss += G_loss.data
 
             G_loss.backward()
+            G_grads.append(np.mean(np.abs(generator.layer0.weight.grad.cpu().numpy())))
             #print(np.mean(np.abs(generator.layer0.weight.grad.cpu().numpy())))
             G_optimizer.step()
             k_it = 0
