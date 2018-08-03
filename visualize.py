@@ -43,7 +43,7 @@ class PlotLossCallback(object):
         G_sample = self.generator(self.Z)
         self.img_ax.get_xaxis().set_visible(False)
         self.img_ax.get_yaxis().set_visible(False)
-        self.img_ax.imshow(np.transpose(G_sample.data.cpu().numpy(), (0, 2, 3, 1))[0])
+        self.img_ax.imshow(np.transpose((G_sample.data.cpu().numpy() + 1)/2, (0, 2, 3, 1))[0])
         display.display(plt.gcf())
         display.clear_output(wait=True)
         #print('G_loss: ', g_loss, 'D_loss:', d_loss)

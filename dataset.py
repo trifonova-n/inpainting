@@ -52,7 +52,7 @@ class Data(Dataset):
         img = self.transform(img)
         img = np.transpose(img, (2, 0, 1))
         img = img.astype(np.float32)
-        return img
+        return img * 2 - 1.0
 
     def load_images(self):
         with h5py.File(self.hdf5_file, 'r') as f:
@@ -67,9 +67,6 @@ class Data(Dataset):
             for i in range(len(self.list_files)):
                 img = self.load_image(i)
                 dset[i] = img
-
-
-
 
     def __getitem__(self, idx):
         img = self.images[idx]
