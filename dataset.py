@@ -29,9 +29,10 @@ class ResizeTransform(object):
 
 
 class Data(Dataset):
-    def __init__(self, path, z_size, transform=None):
+    def __init__(self, path, z_size, transform=None, return_attr=False):
         self.path = Path(path)
         self.z_size = z_size
+        self.return_attr = return_attr
         self.transform = transform
         self.list_files = sorted(self.path.glob('*.jpg'))
         self.hdf5_file = self.path.parent / (str(self.path.name) + '.hdf5')
@@ -41,7 +42,9 @@ class Data(Dataset):
         #                       dtype=np.float32)
         self.load_images()
         self.df_attr = pd.read_csv(str(self.path.parent/'list_attr_celeba.txt'), sep='\s+', header=1)
-        self.df_attr = self.df_attr[['Male', 'Smiling', 'Young', 'Mustache', 'Bald', 'Eyeglasses', 'Wearing_Hat']]
+        self.df_attr = self.df_attr[['Male', 'Smiling', 'Young', 'Eyeglasses', 'Wearing_Hat']] # 'Mustache', 'Bald',
+        self.df_attr = self.df_attr*2 - 1
+        self.y_size = len(self.df_attr.columns)
 
     def __len__(self):
         return len(self.list_files)
@@ -71,4 +74,8 @@ class Data(Dataset):
     def __getitem__(self, idx):
         img = self.images[idx]
         z = np.random.uniform(-1., 1.0, size=(self.z_size,)).astype(np.float32)
-        return img, z
+        if self.return_attr:
+            y = self.df_attr.iloc[idx].values.astype(np.float32)
+            return img, z, y
+        else:
+            return img, z

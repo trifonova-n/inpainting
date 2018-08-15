@@ -175,13 +175,12 @@ class Discriminator5(torch.nn.Module):
         return D_prob, D_logit
 
 
-def generator_loss(D_fake, eps=0.001):
+def generator_loss(D_fake, eps=0.001, eps2=0.0001):
     #return torch.mean(torch.log(1. - D_fake))
-    return -torch.mean(torch.log(D_fake + eps))
+    return -torch.mean(torch.log((D_fake + eps).clamp(eps2)))
 
-
-def discriminator_loss(D_real, D_fake, eps=0.001):
-    return -0.5*torch.mean(torch.log(D_real + eps) + torch.log((1. - eps - D_fake)))
+def discriminator_loss(D_real, D_fake, eps=0.001, eps2=0.0001):
+    return -0.5*torch.mean(torch.log((D_real + eps).clamp(eps2)) + torch.log((1. - eps - D_fake).clamp(eps2)))
 
 
 def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2, callback_func=None):

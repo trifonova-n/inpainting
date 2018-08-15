@@ -1,8 +1,10 @@
 import torch
 import torch.nn as nn
+from torch.distributions.bernoulli import Bernoulli
 import numpy as np
 from pathlib import Path
 from tqdm import tqdm_notebook as tqdm
+from gan import discriminator_loss, generator_loss
 
 
 class CGeneratorNet(torch.nn.Module):
@@ -111,6 +113,82 @@ class CDiscriminator(torch.nn.Module):
         return D_prob, D_logit
 
 
+class CGenerator5Net(torch.nn.Module):
+    def __init__(self, z_size, y_size):
+        super(CGenerator5Net, self).__init__()
+        self.z_size = z_size
+        self.y_size = y_size
+        self.layer0 = nn.Linear(z_size + y_size, 1024*4*4)
+        self.layer1 = nn.Sequential(
+            nn.BatchNorm2d(1024),
+            nn.ReLU(),
+            nn.ConvTranspose2d(1024, 512, kernel_size=5, stride=2, padding=2, output_padding=1),
+            nn.BatchNorm2d(512),
+            nn.ReLU())
+        self.layer2 = nn.Sequential(
+            nn.ConvTranspose2d(512, 256, kernel_size=5, stride=2, padding=2, output_padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU())
+        self.layer3 = nn.Sequential(
+            nn.ConvTranspose2d(256, 128, kernel_size=5, stride=2, padding=2, output_padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU())
+        self.layer4 = nn.Sequential(
+            nn.ConvTranspose2d(128, 64, kernel_size=5, stride=2, padding=2, output_padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose2d(64, 3, kernel_size=3, stride=1, padding=1),
+            nn.Tanh())
+        self.noise = torch.Tensor(64, 64).cuda()
+        self.eps = 0.01
+
+    def forward(self, z, y):
+        input = torch.cat((z, y), 1)
+        out = self.layer0(input).view(-1, 1024, 4, 4)
+        out = self.layer1(out)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = self.layer4(out)
+        #self.noise.normal_(0, self.eps)
+
+        return out# + self.noise
+
+
+class CDiscriminator5(torch.nn.Module):
+    def __init__(self, y_size):
+        super(CDiscriminator5, self).__init__()
+        self.y_size = y_size
+        self.layer1 = nn.Sequential(
+            nn.Conv2d(3, 32, kernel_size=5, stride=2, padding=2),
+            nn.LeakyReLU(0.2),
+            nn.Conv2d(32, 64, kernel_size=5, stride=2, padding=2),
+            nn.BatchNorm2d(64),
+            nn.LeakyReLU(0.2))
+        self.layer2 = nn.Sequential(
+            nn.Conv2d(64, 128, kernel_size=5, stride=2, padding=2),
+            nn.BatchNorm2d(128),
+            nn.LeakyReLU(0.2),
+            nn.Conv2d(128, 256, kernel_size=5, stride=2, padding=2),
+            nn.BatchNorm2d(256),
+            nn.LeakyReLU(0.2))
+        self.layer3 = nn.Sequential(
+            nn.Conv2d(256, 512, kernel_size=5, stride=2, padding=2),
+            nn.BatchNorm2d(512),
+            nn.LeakyReLU(0.2))
+        self.layer4 = nn.Linear(512*2*2 + self.y_size, 512)
+        self.layer5 = nn.Linear(512, 1)
+        self.out_layer = nn.Sigmoid()
+
+    def forward(self, x, y):
+        out = self.layer1(x)
+        out = self.layer2(out)
+        out = self.layer3(out).view(-1, 512*2*2)
+        out = torch.cat((out, y), 1)
+        out = self.layer4(out)
+        D_logit = self.layer5(out)
+        D_prob = self.out_layer(D_logit)
+        return D_prob, D_logit
+
+
 
 def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2, callback_func=None):
     generator.train()
@@ -122,16 +200,19 @@ def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2,
     k_it = 0
     #G_grads = []
     #D_grads = []
+    p = [0.5, 0.5, 0.5, 0.1, 0.1]
+    y_sampler = Bernoulli(torch.tensor(p).expand(loader.batch_size, -1))
 
-    for img, Z in loader:
+    for img, Z, Y in loader:
         X = img.cuda()
         Z = Z.cuda()
+        Y = Y.cuda()
         D_optimizer.zero_grad()
         G_optimizer.zero_grad()
 
-        G_sample = generator(Z)
-        D_real, D_logit_real = discriminator(X)
-        D_fake, D_logit_fake = discriminator(G_sample)
+        G_sample = generator(Z, Y)
+        D_real, D_logit_real = discriminator(X, Y)
+        D_fake, D_logit_fake = discriminator(G_sample, Y)
 
         D_loss = discriminator_loss(D_real, D_fake)
         D_train_loss += D_loss.data
@@ -147,9 +228,11 @@ def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2,
             D_optimizer.zero_grad()
             G_optimizer.zero_grad()
             Z.uniform_(-1., 1.)
-            G_sample = generator(Z)
+            Y = y_sampler.sample()*2.0 - 1.0
+            Y = Y.cuda()
+            G_sample = generator(Z, Y)
             #D_real, D_logit_real = discriminator(X)
-            D_fake, D_logit_fake = discriminator(G_sample)
+            D_fake, D_logit_fake = discriminator(G_sample, Y)
             G_loss = generator_loss(D_fake)
             G_train_loss += G_loss.data
 
