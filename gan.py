@@ -3,6 +3,7 @@ import torch.nn as nn
 import numpy as np
 from pathlib import Path
 from tqdm import tqdm_notebook as tqdm
+from losses import GeneratorLoss, DiscriminatorLoss
 
 
 class GeneratorNet(torch.nn.Module):
@@ -175,12 +176,14 @@ class Discriminator5(torch.nn.Module):
         return D_prob, D_logit
 
 
-def generator_loss(D_fake, eps=0.001, eps2=0.0001):
-    #return torch.mean(torch.log(1. - D_fake))
-    return -torch.mean(torch.log((D_fake + eps).clamp(eps2)))
 
-def discriminator_loss(D_real, D_fake, eps=0.001, eps2=0.0001):
-    return -0.5*torch.mean(torch.log((D_real + eps).clamp(eps2)) + torch.log((1. - eps - D_fake).clamp(eps2)))
+
+#def generator_loss(D_fake, eps=0.001, eps2=0.0001):
+#    #return torch.mean(torch.log(1. - D_fake))
+#    return -torch.mean(torch.log((D_fake + eps).clamp(eps2)))
+
+#def discriminator_loss(D_real, D_fake, eps=0.001, eps2=0.0001):
+#    return -0.5*torch.mean(torch.log((D_real + eps).clamp(eps2)) + torch.log((1. - eps - D_fake).clamp(eps2)))
 
 
 def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2, callback_func=None):
@@ -193,6 +196,8 @@ def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2,
     k_it = 0
     #G_grads = []
     #D_grads = []
+    generator_loss = GeneratorLoss()
+    discriminator_loss = DiscriminatorLoss(label_smoothing=0.25)
 
     for img, Z in loader:
         X = img.cuda()
@@ -204,7 +209,7 @@ def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2,
         D_real, D_logit_real = discriminator(X)
         D_fake, D_logit_fake = discriminator(G_sample)
 
-        D_loss = discriminator_loss(D_real, D_fake)
+        D_loss = discriminator_loss(D_logit_real, D_logit_fake)
         D_train_loss += D_loss.data
 
         D_loss.backward()
@@ -221,7 +226,7 @@ def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2,
             G_sample = generator(Z)
             #D_real, D_logit_real = discriminator(X)
             D_fake, D_logit_fake = discriminator(G_sample)
-            G_loss = generator_loss(D_fake)
+            G_loss = generator_loss(D_logit_fake)
             G_train_loss += G_loss.data
 
             G_loss.backward()

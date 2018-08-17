@@ -4,7 +4,7 @@ from torch.distributions.bernoulli import Bernoulli
 import numpy as np
 from pathlib import Path
 from tqdm import tqdm_notebook as tqdm
-from gan import discriminator_loss, generator_loss
+from losses import GeneratorLoss, DiscriminatorLoss
 
 
 class CGeneratorNet(torch.nn.Module):
@@ -189,7 +189,6 @@ class CDiscriminator5(torch.nn.Module):
         return D_prob, D_logit
 
 
-
 def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2, callback_func=None):
     generator.train()
     discriminator.train()
@@ -202,6 +201,8 @@ def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2,
     #D_grads = []
     p = [0.5, 0.5, 0.5, 0.1, 0.1]
     y_sampler = Bernoulli(torch.tensor(p).expand(loader.batch_size, -1))
+    generator_loss = GeneratorLoss()
+    discriminator_loss = DiscriminatorLoss(label_smoothing=0.25)
 
     for img, Z, Y in loader:
         X = img.cuda()
@@ -214,7 +215,7 @@ def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2,
         D_real, D_logit_real = discriminator(X, Y)
         D_fake, D_logit_fake = discriminator(G_sample, Y)
 
-        D_loss = discriminator_loss(D_real, D_fake)
+        D_loss = discriminator_loss(D_logit_real, D_logit_fake)
         D_train_loss += D_loss.data
 
         D_loss.backward()
@@ -233,7 +234,7 @@ def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2,
             G_sample = generator(Z, Y)
             #D_real, D_logit_real = discriminator(X)
             D_fake, D_logit_fake = discriminator(G_sample, Y)
-            G_loss = generator_loss(D_fake)
+            G_loss = generator_loss(D_logit_fake)
             G_train_loss += G_loss.data
 
             G_loss.backward()

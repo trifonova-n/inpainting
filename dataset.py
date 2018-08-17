@@ -4,7 +4,7 @@ from skimage.util import crop
 import os
 from pathlib import Path
 import numpy as np
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 import torch
 import h5py
 import pandas as pd
