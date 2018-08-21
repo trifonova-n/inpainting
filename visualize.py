@@ -26,7 +26,7 @@ def plot_batch(img_batch, transpose_channels=True, normalize=False, limit=4, ax=
 
 
 class GanPlotLossCallback(object):
-    def __init__(self, generator, discriminator):
+    def __init__(self, generator, discriminator, fig_name='gan.png'):
         self.generator = generator
         self.discriminator = discriminator
         self.fig = plt.figure()
@@ -34,6 +34,7 @@ class GanPlotLossCallback(object):
         self.d_losses = []
         self.g_losses = []
         self.Z = torch.Tensor(1, self.generator.z_size).cuda()
+        self.fig_name = fig_name
 
     def __call__(self, g_loss, d_loss):
         self.d_losses.append(d_loss)
@@ -47,13 +48,14 @@ class GanPlotLossCallback(object):
         self.img_ax.get_xaxis().set_visible(False)
         self.img_ax.get_yaxis().set_visible(False)
         self.img_ax.imshow(np.transpose((G_sample.data.cpu().numpy() + 1)/2, (0, 2, 3, 1))[0])
+        plt.savefig(self.fig_name)
         display.display(plt.gcf())
         display.clear_output(wait=True)
         #print('G_loss: ', g_loss, 'D_loss:', d_loss)
 
 
 class cGanPlotLossCallback(object):
-    def __init__(self, generator, discriminator):
+    def __init__(self, generator, discriminator, fig_name='conditional_gan.png'):
         self.generator = generator
         self.discriminator = discriminator
         self.fig = plt.figure()
@@ -72,6 +74,7 @@ class cGanPlotLossCallback(object):
                           [0., 0, 1, 0, 0],
                           [1., 1, 1, 0, 0],
                           [0., 1, 0, 1, 0]]).cuda()
+        self.fig_name = fig_name
 
     def __call__(self, g_loss, d_loss):
         self.d_losses.append(d_loss)
@@ -83,6 +86,7 @@ class cGanPlotLossCallback(object):
         self.Z.uniform_(-1., 1.)
         G_sample = self.generator(self.Z, self.Y)
         plot_batch(G_sample.data.cpu().numpy(), normalize=True, ax=self.img_ax)
+        plt.savefig(self.fig_name)
         display.display(plt.gcf())
         display.clear_output(wait=True)
         #print('G_loss: ', g_loss, 'D_loss:', d_loss)
