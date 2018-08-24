@@ -4,6 +4,7 @@ import numpy as np
 from pathlib import Path
 from tqdm import tqdm_notebook as tqdm
 from losses import GeneratorLoss, DiscriminatorLoss
+from checkpoint import load_checkpoint, save_checkpoint, get_last_checkpoint
 
 
 class GeneratorNet(torch.nn.Module):
@@ -244,17 +245,22 @@ def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2,
         callback_func(g_loss=G_train_loss / n_g_steps, d_loss=D_train_loss / n_d_steps)
 
 
-def train(generator, discriminator, loader, n_epochs=100, k=2, callback_func=None, model_path='model'):
+def train(generator, discriminator, loader, n_epochs=100, k=2, callback_func=None, model_path='model', continue_training=False):
+    if continue_training:
+        last_epoch = get_last_checkpoint(model_path)
+    else:
+        last_epoch = -1
     model_path = Path(model_path)
-    model_path.mkdir(exist_ok=True)
     G_optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, generator.parameters()),
                                  lr=0.0002, betas=(0.5, 0.999), weight_decay=0.0001)
     D_optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, discriminator.parameters()),
                                  lr=0.0002, betas=(0.5, 0.999), weight_decay=0.0001)
 
-    for i in range(n_epochs):
+    if last_epoch >= 0:
+        load_checkpoint(model_path, last_epoch, generator, discriminator, G_optimizer, D_optimizer)
+
+    for i in range(last_epoch + 1, n_epochs):
         train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=k, callback_func=callback_func)
-        torch.save(generator.state_dict(), str(model_path / ('generator_%d.pth' % (i,))))
-        torch.save(discriminator.state_dict(), str(model_path / ('discriminator_%d.pth' % (i,))))
+        save_checkpoint(generator, discriminator, g_optimizer=G_optimizer, d_optimizer=D_optimizer, epoch=i, save_path=model_path)
 
 

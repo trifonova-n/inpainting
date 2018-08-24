@@ -18,7 +18,10 @@ def plot_batch(img_batch, transpose_channels=True, normalize=False, limit=4, ax=
 
     if ax is None:
         fig, axes = plt.subplots(nrows, ncols)
-        ax = axes.ravel()
+        try:
+            ax = axes.ravel()
+        except AttributeError as e:
+            ax = [axes]
     for i in range(n):
         ax[i].get_xaxis().set_visible(False)
         ax[i].get_yaxis().set_visible(False)
@@ -73,7 +76,7 @@ class cGanPlotLossCallback(object):
                           [1., 0, 0, 0, 0],
                           [0., 0, 1, 0, 0],
                           [1., 1, 1, 0, 0],
-                          [0., 1, 0, 1, 0]]).cuda()
+                          [0., 1, 0, 1, 0]]).cuda() * 2 - 1
         self.fig_name = fig_name
 
     def __call__(self, g_loss, d_loss):
@@ -89,4 +92,3 @@ class cGanPlotLossCallback(object):
         plt.savefig(self.fig_name)
         display.display(plt.gcf())
         display.clear_output(wait=True)
-        #print('G_loss: ', g_loss, 'D_loss:', d_loss)
