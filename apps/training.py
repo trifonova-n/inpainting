@@ -1,9 +1,9 @@
-from dataset import Data, ResizeTransform
+from inpainting.dataset import Data, ResizeTransform
 from gan.conditional_gan import CGenerator5Net, CDiscriminator5, train
 from torch.utils.data import DataLoader
 import torch
-from visualize import plot_batch
-from visualize import cGanPlotLossCallback
+from inpainting.visualize import plot_batch
+from inpainting.visualize import cGanPlotLossCallback
 
 
 DATA_PATH = 'data/img_align_celeba'
