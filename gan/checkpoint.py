@@ -49,12 +49,10 @@ def load_checkpoint(load_path, epoch, generator, discriminator, g_optimizer, d_o
     epoch = state['epoch']
     generator_path = state['generator']
     discriminator_path = state['discriminator']
-    generator_state = torch.load(str(load_path/generator_path))
-    discriminator_state = torch.load(str(load_path/discriminator_path))
-    g_optimizer.load_state_dict(generator_state)
-    d_optimizer.load_state_dict(discriminator_state)
-    generator.load_state_dict(str(load_path / generator_path))
-    discriminator.load_state_dict(str(load_path / discriminator_path))
+    generator.load_state_dict(torch.load(str(load_path / generator_path)))
+    discriminator.load_state_dict(torch.load(str(load_path / discriminator_path)))
+    g_optimizer.load_state_dict(state['g_optimizer'])
+    d_optimizer.load_state_dict(state['d_optimizer'])
 
 
 def get_last_checkpoint(path):
