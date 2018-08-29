@@ -1,9 +1,7 @@
 from dataset import Data, ResizeTransform
-from conditional_gan import CGenerator5Net, CDiscriminator5, train
+from gan.conditional_gan import CGenerator5Net, CDiscriminator5, train
 from torch.utils.data import DataLoader
 import torch
-import matplotlib.pyplot as plt
-import pandas as pd
 from visualize import plot_batch
 from visualize import cGanPlotLossCallback
 

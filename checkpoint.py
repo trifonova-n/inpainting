@@ -25,7 +25,7 @@ def save_checkpoint(generator, discriminator, g_optimizer, d_optimizer, epoch, s
     state = {
         'epoch': epoch,
         'generator': str(generator_path),
-        'disriminator': str(discriminator_path),
+        'discriminator': str(discriminator_path),
         'g_optimizer': g_optimizer.state_dict(),
         'd_optimizer': d_optimizer.state_dict(),
     }
@@ -47,10 +47,12 @@ def load_checkpoint(load_path, epoch, generator, discriminator, g_optimizer, d_o
     checkpoint_path = checkpoint_template % (epoch,)
     state = torch.load(str(load_path / checkpoint_path))
     epoch = state['epoch']
-    generator_path = Path(state['generator'])
-    discriminator_path = Path(state['discriminator'])
-    g_optimizer.load_state_dict(state['g_optimizer'])
-    d_optimizer.load_state_dict(state['d_optimizer'])
+    generator_path = state['generator']
+    discriminator_path = state['discriminator']
+    generator_state = torch.load(str(load_path/generator_path))
+    discriminator_state = torch.load(str(load_path/discriminator_path))
+    g_optimizer.load_state_dict(generator_state)
+    d_optimizer.load_state_dict(discriminator_state)
     generator.load_state_dict(str(load_path / generator_path))
     discriminator.load_state_dict(str(load_path / discriminator_path))
 
@@ -58,7 +60,7 @@ def load_checkpoint(load_path, epoch, generator, discriminator, g_optimizer, d_o
 def get_last_checkpoint(path):
     path = Path(path)
     list_files = path.glob('checkpoint_*')
-    epochs = [int(str(s).split('_')[1].split('.')[0]) for s in list_files]
+    epochs = [int(str(s).split('_')[-1].split('.')[0]) for s in list_files]
     if not epochs:
         return -1
     return max(epochs)
