@@ -188,7 +188,7 @@ class CDiscriminator5(torch.nn.Module):
         return D_prob, D_logit
 
 
-def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2, callback_func=None):
+def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, y_sampler, k=2, callback_func=None):
     generator.train()
     discriminator.train()
     G_train_loss = 0.0
@@ -198,8 +198,7 @@ def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2,
     k_it = 0
     #G_grads = []
     #D_grads = []
-    p = [0.5, 0.5, 0.5, 0.1, 0.1]
-    y_sampler = Bernoulli(torch.tensor(p).expand(loader.batch_size, -1))
+    #y_sampler = Bernoulli(torch.tensor(p).expand(loader.batch_size, -1))
     generator_loss = GeneratorLoss()
     discriminator_loss = DiscriminatorLoss(label_smoothing=0.25)
 
@@ -227,8 +226,9 @@ def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2,
         if k_it == k:
             D_optimizer.zero_grad()
             G_optimizer.zero_grad()
-            Z.uniform_(-1., 1.)
-            Y = y_sampler.sample()*2.0 - 1.0
+            Z = torch.FloatTensor(loader.batch_size, generator.z_size).uniform_(-1., 1.).cuda()
+            Y = y_sampler.sample_batch(loader.batch_size)
+            print(Z.shape, Y.shape)
             Y = Y.cuda()
             G_sample = generator(Z, Y)
             #D_real, D_logit_real = discriminator(X)
@@ -251,7 +251,7 @@ def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2,
         callback_func(g_loss=G_train_loss / n_g_steps, d_loss=D_train_loss / n_d_steps)
 
 
-def train(generator, discriminator, loader, n_epochs=100, k=2, callback_func=None, model_path='model', continue_training=False):
+def train(generator, discriminator, loader, y_sampler, n_epochs=100, k=2, callback_func=None, model_path='model', continue_training=False):
     model_path = Path(model_path)
     if continue_training:
         last_epoch = get_last_checkpoint(model_path)
@@ -266,5 +266,7 @@ def train(generator, discriminator, loader, n_epochs=100, k=2, callback_func=Non
         load_checkpoint(model_path, last_epoch, generator, discriminator, G_optimizer, D_optimizer)
 
     for i in range(last_epoch + 1, n_epochs):
-        train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=k, callback_func=callback_func)
-        save_checkpoint(generator, discriminator, g_optimizer=G_optimizer, d_optimizer=D_optimizer, epoch=i, save_path=model_path)
+        train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader,
+                    y_sampler=y_sampler, k=k, callback_func=callback_func)
+        save_checkpoint(generator, discriminator,
+                        g_optimizer=G_optimizer, d_optimizer=D_optimizer, epoch=i, save_path=model_path)

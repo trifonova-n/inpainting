@@ -11,7 +11,7 @@ import pandas as pd
 
 
 class ResizeTransform(object):
-    def __init__(self, output_shape=(64, 64), sigma=0.05, path='data'):
+    def __init__(self, output_shape=(64, 64), sigma=0.05):
         self.output_shape = output_shape
         self.sigma = sigma
 
@@ -43,6 +43,7 @@ class Data(Dataset):
         #                       dtype=np.float32)
         self.load_images()
         self.df_attr = pd.read_csv(str(self.path.parent/'list_attr_celeba.txt'), sep='\s+', header=1)
+        self.conditions = list(conditions)
         self.df_attr = self.df_attr[list(conditions)] # 'Mustache', 'Bald',
         self.y_size = len(self.df_attr.columns)
 
@@ -83,3 +84,18 @@ class Data(Dataset):
             return img, z, y
         else:
             return img, z
+
+
+class ConditionSampler(object):
+    """
+    Generates y from training data distribution
+    """
+    def __init__(self, data):
+        self.df_attr = data.df_attr
+        self.conditions = data.conditions
+
+    def sample(self):
+        return self.df_attr.sample(1).iloc[0].values.astype(np.float32)
+
+    def sample_batch(self, batch_size):
+        return torch.tensor(self.df_attr.sample(batch_size).values.astype(np.float32))
