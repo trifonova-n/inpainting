@@ -22,7 +22,9 @@ class DiscriminatorLoss(torch.nn.Module):
     def forward(self, D_logit_real, D_logit_fake):
         target = torch.ones_like(D_logit_real.data) - self.label_smoothing / 2.0
         loss_on_real = self.bce_wl_loss(D_logit_real, target)
+        print('loss_on_real:', loss_on_real)
         target = torch.zeros_like(D_logit_fake.data)
         loss_on_fake = self.bce_wl_loss(D_logit_fake, target)
+        print('loss_on_fake:', loss_on_fake)
         loss = 0.5*(loss_on_real + loss_on_fake)
         return loss
