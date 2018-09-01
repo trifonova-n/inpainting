@@ -175,16 +175,6 @@ class Discriminator5(torch.nn.Module):
         return D_prob, D_logit
 
 
-
-
-#def generator_loss(D_fake, eps=0.001, eps2=0.0001):
-#    #return torch.mean(torch.log(1. - D_fake))
-#    return -torch.mean(torch.log((D_fake + eps).clamp(eps2)))
-
-#def discriminator_loss(D_real, D_fake, eps=0.001, eps2=0.0001):
-#    return -0.5*torch.mean(torch.log((D_real + eps).clamp(eps2)) + torch.log((1. - eps - D_fake).clamp(eps2)))
-
-
 def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2, callback_func=None):
     generator.train()
     discriminator.train()
@@ -193,8 +183,6 @@ def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2,
     n_d_steps = 0
     n_g_steps = 0
     k_it = 0
-    #G_grads = []
-    #D_grads = []
     generator_loss = GeneratorLoss()
     discriminator_loss = DiscriminatorLoss(label_smoothing=0.25)
 
@@ -212,7 +200,6 @@ def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2,
         D_train_loss += D_loss.data
 
         D_loss.backward()
-        #D_grads.append(np.mean(np.abs(discriminator.layer1[0].weight.grad.cpu().numpy())))
         D_optimizer.step()
         n_d_steps += 1
 
@@ -223,23 +210,16 @@ def train_epoch(generator, discriminator, G_optimizer, D_optimizer, loader, k=2,
             G_optimizer.zero_grad()
             Z.uniform_(-1., 1.)
             G_sample = generator(Z)
-            #D_real, D_logit_real = discriminator(X)
             D_fake, D_logit_fake = discriminator(G_sample)
             G_loss = generator_loss(D_logit_fake)
             G_train_loss += G_loss.data
 
             G_loss.backward()
-            #G_grads.append(np.mean(np.abs(generator.layer0.weight.grad.cpu().numpy())))
-            #print(np.mean(np.abs(generator.layer0.weight.grad.cpu().numpy())))
             G_optimizer.step()
             k_it = 0
             n_g_steps += 1
 
-        #if n_g_steps >= 1000:
-        #    break
-
     if callback_func is not None:
-        #pass
         callback_func(g_loss=G_train_loss / n_g_steps, d_loss=D_train_loss / n_d_steps)
 
 

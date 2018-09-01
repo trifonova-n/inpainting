@@ -6,7 +6,7 @@ discriminator_template = 'discriminator_%d.pth'
 checkpoint_template = 'checkpoint_%d.pth'
 
 
-def save_checkpoint(generator, discriminator, g_optimizer, d_optimizer, epoch, save_path):
+def save_checkpoint(generator, discriminator, g_optimizer, d_optimizer,  epoch, save_path):
     """
     Save gan checkpoint for continuous training
     :param generator: model

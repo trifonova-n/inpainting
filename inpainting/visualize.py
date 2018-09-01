@@ -77,7 +77,7 @@ class cGanPlotLossCallback(object):
         self.discriminator = discriminator
         self.fig = plt.figure()
         self.y_sampler = y_sampler
-        self.cd = ConditionDescriptor(y_sampler.conditions)
+        self.cd = ConditionDescriber(y_sampler.conditions)
         self.l_ax = plt.subplot2grid((2, 4), (0, 0), rowspan=2, colspan=2)
         img_ax0 = plt.subplot2grid((2, 4), (0, 2))
         img_ax1 = plt.subplot2grid((2, 4), (0, 3))
@@ -107,7 +107,7 @@ class cGanPlotLossCallback(object):
         display.clear_output(wait=True)
 
 
-class ConditionDescriptor(object):
+class ConditionDescriber(object):
     """
     Utility class that can create condition vector y from description
     or generate text description for y
@@ -124,7 +124,7 @@ class ConditionDescriptor(object):
         :param kwargs: 'Male', 'Smiling', 'Young', 'Eyeglasses', 'Wearing_Hat' or other bool conditions from list_attr_celeba
         :return np.array: generated y
 
-        >>> cd = ConditionDescriptor(['Male', 'Smiling', 'Young', 'Eyeglasses', 'Wearing_Hat'])
+        >>> cd = ConditionDescriber(['Male', 'Smiling', 'Young', 'Eyeglasses', 'Wearing_Hat'])
         >>> cd.create_y(Male=True, Young=True)
         [1., -1., 1., -1., -1.]
         """
@@ -143,7 +143,7 @@ class ConditionDescriptor(object):
         :param np.array y: condition vector
         :return: text description
 
-        >>> cd = ConditionDescriptor(['Male', 'Smiling', 'Young', 'Eyeglasses', 'Wearing_Hat'])
+        >>> cd = ConditionDescriber(['Male', 'Smiling', 'Young', 'Eyeglasses', 'Wearing_Hat'])
         >>> cd.describe(np.array([1., 1., -1., -1., -1.]))
         Smiling old man
 
@@ -162,7 +162,7 @@ class ConditionDescriptor(object):
             else:
                 description += "woman "
         processed_conditions.add('Male')
-        description += '\n'
+        #description += '\n'
         if 'Eyeglasses' in self.cond_dict and y[self.cond_dict['Eyeglasses']] > 0:
             description += 'with eyeglasses '
         processed_conditions.add('Eyeglasses')
