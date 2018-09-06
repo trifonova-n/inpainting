@@ -10,3 +10,4 @@ conditions = ['Male', 'Smiling', 'Young', 'Eyeglasses', 'Wearing_Hat']
 Y_SIZE = len(conditions)
 label_smoothing = 0.25
 k = 1 # how many times to update discriminator for 1 generator update
+ENV_NAME = "conditional_gan"

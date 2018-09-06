@@ -1,6 +1,6 @@
 from inpainting.visualizer import Visualizer
 from argparse import ArgumentParser
-from inpainting.dataset import ConditionSampler, Dataset
+from inpainting.dataset import ConditionSampler, Data
 
 
 if __name__ == '__main__':
@@ -11,11 +11,12 @@ if __name__ == '__main__':
     DATA_PATH = 'data/img_align_celeba'
     Z_SIZE = 100
 
-    data = Dataset(DATA_PATH, Z_SIZE)
+    data = Data(DATA_PATH, Z_SIZE)
     y_sampler = ConditionSampler(data=data)
-    visualizer = Visualizer('visualize_network', )
+    visualizer = Visualizer('visualize_network', y_sampler=y_sampler)
     visualizer.update_losses(2., 7., type='validation')
     visualizer.update_losses(4., 8., type='validation')
     visualizer.update_losses(6., 9., type='validation')
+    visualizer.save()
     s = input('--> ')
 

@@ -6,7 +6,7 @@ discriminator_template = 'discriminator_%d.pth'
 checkpoint_template = 'checkpoint_%d.pth'
 
 
-def save_checkpoint(generator, discriminator, g_optimizer, d_optimizer,  epoch, save_path):
+def save_checkpoint(generator, discriminator, g_optimizer, d_optimizer, visualizer, epoch, save_path):
     """
     Save gan checkpoint for continuous training
     :param generator: model
@@ -16,6 +16,7 @@ def save_checkpoint(generator, discriminator, g_optimizer, d_optimizer,  epoch, 
     :param epoch: current epoch
     :param save_path: directory to save checkpoint
     """
+
     save_path = Path(save_path)
     save_path.mkdir(exist_ok=True)
     generator_path = generator_template % (epoch,)
@@ -28,12 +29,13 @@ def save_checkpoint(generator, discriminator, g_optimizer, d_optimizer,  epoch, 
         'discriminator': str(discriminator_path),
         'g_optimizer': g_optimizer.state_dict(),
         'd_optimizer': d_optimizer.state_dict(),
+        'visdom_env' : visualizer.env_name
     }
     checkpoint_path = checkpoint_template % (epoch,)
     torch.save(state, str(save_path / checkpoint_path))
 
 
-def load_checkpoint(load_path, epoch, generator, discriminator, g_optimizer, d_optimizer):
+def load_checkpoint(load_path, epoch, generator, discriminator, g_optimizer, d_optimizer, visualizer):
     """
     Load gan checkpoint for continuous training
     :param load_path: directory containing checkpoints
@@ -53,6 +55,8 @@ def load_checkpoint(load_path, epoch, generator, discriminator, g_optimizer, d_o
     discriminator.load_state_dict(torch.load(str(load_path / discriminator_path)))
     g_optimizer.load_state_dict(state['g_optimizer'])
     d_optimizer.load_state_dict(state['d_optimizer'])
+    visdom_env = state['visdom_env']
+    visualizer.load(visdom_env, continue_session=True)
 
 
 def get_last_checkpoint(path):

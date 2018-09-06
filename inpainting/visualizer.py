@@ -2,6 +2,7 @@ import visdom
 import numpy as np
 import torch
 from inpainting.visualize import ConditionDescriber
+import json
 
 
 class Visualizer(object):
@@ -9,12 +10,14 @@ class Visualizer(object):
         self.vis = visdom.Visdom(use_incoming_socket=False, env=env_name)
         self.env_name = env_name
         assert self.vis.check_connection()
-        self.vis.text('Hello, world!')
+        self.log_win = self.vis.text('Starting new Log:', env=self.env_name, append=True)
         self.train_losses_plt = 'train_losses'
         self.valid_losses_plt = 'val_losses'
         self.epoch = 0
         self.y_sampler = y_sampler
         self.cd = ConditionDescriber(y_sampler.conditions)
+        print(self.vis.get_env_list())
+        #json.loads(self.vis._send({}, endpoint='env_state', quiet=True))
 
     def update_losses(self, g_loss, d_loss, type):
         if type == 'validation':
@@ -39,4 +42,28 @@ class Visualizer(object):
         G_sample = generator(Z, Y)
         descriptions = [self.cd.describe(y) for y in Y]
         self.plot_batch(G_sample, descriptions)
+
+    def log_text(self, msg):
+        self.vis.text(msg, win=self.log_win, env=self.env_name, append=True)
+
+    def save(self):
+        self.vis.save([self.env_name])
+
+    def load(self, env_name, continue_session):
+        def split_name(name):
+            fields = name.split('_')
+            if fields[-1].isdigit():
+                return '_'.join(fields[:-1]), int(fields[-1])
+            else:
+                return name, 0
+
+        if continue_session:
+            self.env_name = env_name
+        else:
+            name, version = split_name(env_name)
+            envs = [s for s in self.vis.get_env_list() if name in s]
+            last_version = max(int(v) for _, v in map(split_name, envs))
+            self.env_name = name + '_' + str(last_version + 1)
+
+
 
