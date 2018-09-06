@@ -12,6 +12,7 @@ class BaseGanTrainer(object):
         self.d_optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, discriminator.parameters()),
                                        lr=lr, betas=(0.5, 0.999))
         self.visualizer = visualiser
+        self.current_epoch = 0
 
     def train_epoch(self, loader):
         raise NotImplementedError()
@@ -20,7 +21,7 @@ class BaseGanTrainer(object):
         last_epoch = self.current_epoch
         for self.current_epoch in range(last_epoch + 1, n_epochs):
             self.train_epoch(loader)
-            save_checkpoint(self)
+            save_checkpoint(self, )
 
     def load_last_checkpoint(self):
         model_path = self.config.MODEL_PATH

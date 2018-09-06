@@ -17,6 +17,8 @@ class Visualizer(object):
         self.epoch = 0
         self.y_sampler = y_sampler
         self.cd = ConditionDescriber(y_sampler.conditions)
+        # creates new environment version by default
+        # set_env can be used to specify usage of existing environment
         self._set_new_env_version(env_name)
 
     def update_losses(self, g_loss, d_loss, type):
