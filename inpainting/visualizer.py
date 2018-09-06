@@ -6,18 +6,18 @@ import json
 
 
 class Visualizer(object):
+    vis = visdom.Visdom(use_incoming_socket=False)
+
     def __init__(self, env_name, y_sampler):
-        self.vis = visdom.Visdom(use_incoming_socket=False, env=env_name)
         self.env_name = env_name
         assert self.vis.check_connection()
-        self.log_win = self.vis.text('Starting new Log:', env=self.env_name, append=True)
+        self.log_win = 'text_log'
         self.train_losses_plt = 'train_losses'
         self.valid_losses_plt = 'val_losses'
         self.epoch = 0
         self.y_sampler = y_sampler
         self.cd = ConditionDescriber(y_sampler.conditions)
-        print(self.vis.get_env_list())
-        #json.loads(self.vis._send({}, endpoint='env_state', quiet=True))
+        self._set_new_env_version(env_name)
 
     def update_losses(self, g_loss, d_loss, type):
         if type == 'validation':
@@ -30,7 +30,7 @@ class Visualizer(object):
         self.epoch += 1
         Y = np.array([[g_loss, d_loss]])
         X = np.array([self.epoch])
-        self.vis.line(Y=Y, X=X, win=win, update='append', opts=dict(legend=['generator', 'discriminator']))
+        self.vis.line(Y=Y, X=X, win=win, env=self.env_name, update='append', opts=dict(legend=['generator', 'discriminator']))
 
     def plot_batch(self, batch, descriptions):
         caption = ', '.join(descriptions)
@@ -49,7 +49,7 @@ class Visualizer(object):
     def save(self):
         self.vis.save([self.env_name])
 
-    def load(self, env_name, continue_session):
+    def _set_new_env_version(self, env_name):
         def split_name(name):
             fields = name.split('_')
             if fields[-1].isdigit():
@@ -57,13 +57,14 @@ class Visualizer(object):
             else:
                 return name, 0
 
-        if continue_session:
-            self.env_name = env_name
-        else:
-            name, version = split_name(env_name)
-            envs = [s for s in self.vis.get_env_list() if name in s]
-            last_version = max(int(v) for _, v in map(split_name, envs))
-            self.env_name = name + '_' + str(last_version + 1)
+        name, version = split_name(env_name)
+        envs = [s for s in self.vis.get_env_list() if name in s]
+        last_version = max(int(v) for _, v in map(split_name, envs))
+        self.env_name = name + '_' + str(last_version + 1)
+
+    def set_env(self, env_name):
+        self.env_name = env_name
+
 
 
 
