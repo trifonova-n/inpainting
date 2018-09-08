@@ -22,6 +22,7 @@ def save_checkpoint(trainer, save_path):
     visdom_env = ""
     if trainer.visualizer is not None:
         visdom_env = trainer.visualizer.env_name
+        trainer.visualizer.save()
     state = {
         'epoch': trainer.current_epoch,
         'generator': str(generator_path),
@@ -51,9 +52,9 @@ def load_checkpoint(load_path, epoch, trainer):
     trainer.discriminator.load_state_dict(torch.load(str(load_path / discriminator_path)))
     trainer.g_optimizer.load_state_dict(state['g_optimizer'])
     trainer.d_optimizer.load_state_dict(state['d_optimizer'])
-    visdom_env = state['visdom_env']
+    visdom_env = state.get('visdom_env')
     trainer.current_epoch = epoch
-    if trainer.visualizer is not None:
+    if trainer.visualizer is not None and visdom_env:
         trainer.visualizer.set_env(visdom_env)
 
 
