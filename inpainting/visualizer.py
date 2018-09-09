@@ -8,20 +8,20 @@ import json
 class Visualizer(object):
     vis = visdom.Visdom(use_incoming_socket=False)
 
-    def __init__(self, env_name, y_sampler=None):
-        self.env_name = env_name
+    def __init__(self, config, noise_sampler):
+        self.env_name = config.ENV_NAME
         assert self.vis.check_connection()
         self.log_win = 'text_log'
         self.train_losses_plt = 'train_losses'
         self.valid_losses_plt = 'val_losses'
         self.gen_res_img = 'gen_res'
         self.epoch = 0
-        if y_sampler:
-            self.y_sampler = y_sampler
-            self.cd = ConditionDescriber(y_sampler.conditions)
+        self.noise_sampler = noise_sampler
+        if hasattr(config, 'conditions'):
+            self.cd = ConditionDescriber(config.conditions)
         # creates new environment version by default
         # set_env can be used to specify usage of existing environment
-        self._set_new_env_version(env_name)
+        self._set_new_env_version(self.env_name)
 
     def update_losses(self, g_loss, d_loss, type):
         if type == 'validation':
@@ -42,10 +42,14 @@ class Visualizer(object):
         self.vis.images(batch, opts=dict(caption=caption), env=self.env_name, win=self.gen_res_img)
 
     def show_generator_results(self, generator):
-        Z = torch.Tensor(4, generator.z_size).uniform_(-1., 1.).cuda()
-        Y = self.y_sampler.sample_batch(4).cuda()
-        G_sample = generator(Z, Y)
-        descriptions = [self.cd.describe(y) for y in Y]
+        noise = self.noise_sampler.sample_batch(4)
+        G_sample = generator(*noise)
+        # if conditional gan
+        if len(noise) > 1:
+            Y = noise[1]
+            descriptions = [self.cd.describe(y) for y in Y]
+        else:
+            descriptions = ["Generated images"]
         self.plot_batch(G_sample, descriptions)
         print("show_generator_results")
 

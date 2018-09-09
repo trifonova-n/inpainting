@@ -1,7 +1,7 @@
 
 DATA_PATH = 'data/img_align_celeba'
 BATCH_SIZE = 512
-NUM_WORKERS = 1
+NUM_WORKERS = 0
 Z_SIZE = 100
 MODEL_PATH = 'model/'
 CONTINUE_TRAINING = False
