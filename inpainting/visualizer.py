@@ -6,18 +6,22 @@ import json
 
 
 class Visualizer(object):
-    def __init__(self, env_name, y_sampler):
-        self.vis = visdom.Visdom(use_incoming_socket=False, env=env_name)
-        self.env_name = env_name
+    vis = visdom.Visdom(use_incoming_socket=False)
+
+    def __init__(self, config, noise_sampler):
+        self.env_name = config.ENV_NAME
         assert self.vis.check_connection()
-        self.log_win = self.vis.text('Starting new Log:', env=self.env_name, append=True)
+        self.log_win = 'text_log'
         self.train_losses_plt = 'train_losses'
         self.valid_losses_plt = 'val_losses'
+        self.gen_res_img = 'gen_res'
         self.epoch = 0
-        self.y_sampler = y_sampler
-        self.cd = ConditionDescriber(y_sampler.conditions)
-        print(self.vis.get_env_list())
-        #json.loads(self.vis._send({}, endpoint='env_state', quiet=True))
+        self.noise_sampler = noise_sampler
+        if hasattr(config, 'conditions'):
+            self.cd = ConditionDescriber(config.conditions)
+        # creates new environment version by default
+        # set_env can be used to specify usage of existing environment
+        self._set_new_env_version(self.env_name)
 
     def update_losses(self, g_loss, d_loss, type):
         if type == 'validation':
@@ -30,26 +34,32 @@ class Visualizer(object):
         self.epoch += 1
         Y = np.array([[g_loss, d_loss]])
         X = np.array([self.epoch])
-        self.vis.line(Y=Y, X=X, win=win, update='append', opts=dict(legend=['generator', 'discriminator']))
+        self.vis.line(Y=Y, X=X, win=win, env=self.env_name, update='append', opts=dict(legend=['generator', 'discriminator']))
+        print("Update losses")
 
     def plot_batch(self, batch, descriptions):
         caption = ', '.join(descriptions)
-        self.vis.images(batch, opts=dict(caption=caption))
+        self.vis.images(batch, opts=dict(caption=caption), env=self.env_name, win=self.gen_res_img)
 
     def show_generator_results(self, generator):
-        Z = torch.Tensor(4, generator.z_size).uniform_(-1., 1.).cuda()
-        Y = self.y_sampler.sample_batch(4).cuda()
-        G_sample = generator(Z, Y)
-        descriptions = [self.cd.describe(y) for y in Y]
+        noise = self.noise_sampler.sample_batch(4)
+        G_sample = generator(*noise)
+        # if conditional gan
+        if len(noise) > 1:
+            Y = noise[1]
+            descriptions = [self.cd.describe(y) for y in Y]
+        else:
+            descriptions = ["Generated images"]
         self.plot_batch(G_sample, descriptions)
+        print("show_generator_results")
 
     def log_text(self, msg):
-        self.vis.text(msg, win=self.log_win, env=self.env_name, append=True)
+        self.vis.text(msg, win=self.log_win, env=self.env_name)
 
     def save(self):
         self.vis.save([self.env_name])
 
-    def load(self, env_name, continue_session):
+    def _set_new_env_version(self, env_name):
         def split_name(name):
             fields = name.split('_')
             if fields[-1].isdigit():
@@ -57,13 +67,15 @@ class Visualizer(object):
             else:
                 return name, 0
 
-        if continue_session:
-            self.env_name = env_name
-        else:
-            name, version = split_name(env_name)
-            envs = [s for s in self.vis.get_env_list() if name in s]
+        name, version = split_name(env_name)
+        envs = [s for s in self.vis.get_env_list() if name in s]
+        if envs:
             last_version = max(int(v) for _, v in map(split_name, envs))
-            self.env_name = name + '_' + str(last_version + 1)
+        else:
+            last_version = 0
+        self.env_name = name + '_' + str(last_version + 1)
 
+    def set_env(self, env_name):
+        self.env_name = env_name
 
 

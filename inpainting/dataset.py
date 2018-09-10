@@ -29,10 +29,9 @@ class ResizeTransform(object):
 
 
 class Data(Dataset):
-    def __init__(self, path, z_size, transform=None, return_attr=False,
+    def __init__(self, path, transform=None, return_attr=False,
                  conditions=('Male', 'Smiling', 'Young', 'Eyeglasses', 'Wearing_Hat')):
         self.path = Path(path)
-        self.z_size = z_size
         self.return_attr = return_attr
         self.transform = transform
         self.list_files = sorted(self.path.glob('*.jpg'))
@@ -78,24 +77,43 @@ class Data(Dataset):
 
     def __getitem__(self, idx):
         img = self.images[idx]
-        z = np.random.uniform(-1., 1.0, size=(self.z_size,)).astype(np.float32)
         if self.return_attr:
             y = self.df_attr.iloc[idx].values.astype(np.float32)
-            return img, z, y
+            return torch.from_numpy(img).cuda(), torch.from_numpy(y).cuda()
         else:
-            return img, z
+            return (torch.from_numpy(img).cuda(),)
 
 
-class ConditionSampler(object):
+class NoiseSampler(object):
     """
-    Generates y from training data distribution
+    Generates input noise z for generator from uniform distribution [-1., 1.]
     """
-    def __init__(self, data):
+    def __init__(self, z_size):
+        self.z_size = z_size
+
+    def sample(self):
+        z = np.random.uniform(-1., 1.0, size=(self.z_size,)).astype(np.float32)
+        return (torch.from_numpy(z).cuda(),)
+
+    def sample_batch(self, batch_size):
+        z = np.random.uniform(-1., 1.0, size=(batch_size, self.z_size)).astype(np.float32)
+        return (torch.from_numpy(z).cuda(),)
+
+
+class ConditionSampler(NoiseSampler):
+    """
+    Generates input noise z for generator from uniform distribution [-1., 1.]
+    and condition y from training data distribution
+    """
+    def __init__(self, data, z_size):
+        super().__init__(z_size)
         self.df_attr = data.df_attr
         self.conditions = data.conditions
 
     def sample(self):
-        return self.df_attr.sample(1).iloc[0].values.astype(np.float32)
+        z = NoiseSampler.sample(self)[0]
+        return z, torch.from_numpy(self.df_attr.sample(1).iloc[0].values.astype(np.float32)).cuda()
 
     def sample_batch(self, batch_size):
-        return torch.tensor(self.df_attr.sample(batch_size).values.astype(np.float32))
+        z = NoiseSampler.sample_batch(self, batch_size)[0]
+        return z, torch.tensor(self.df_attr.sample(batch_size).values.astype(np.float32)).cuda()
