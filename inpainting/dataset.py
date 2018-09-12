@@ -16,41 +16,45 @@ class ResizeTransform(object):
         self.sigma = sigma
 
     def __call__(self, img):
-        #noise = np.random.normal(0, self.sigma, img.shape)
         width = img.shape[1]
         height = img.shape[0]
         box_side = 140
         horisontal = (width - box_side) // 2
         vertical = (height - box_side) // 2
         img = img[vertical + 10:height - vertical + 10, horisontal:width - horisontal]
-        #print(img.shape)
         img = resize(img, self.output_shape, mode='constant')
-        return img# + noise
+        return img
 
 
 class Data(Dataset):
-    def __init__(self, path, z_size, transform=None, return_attr=False,
+    def __init__(self, path, transform=None, return_attr=False,
                  conditions=('Male', 'Smiling', 'Young', 'Eyeglasses', 'Wearing_Hat')):
+        """
+
+        :param path: data path
+        :param transform: transformation function
+        :param return_attr: False for unconditional gan, True for conditional
+        :param conditions: list of names of conditions in conditional vector
+        """
         self.path = Path(path)
-        self.z_size = z_size
         self.return_attr = return_attr
         self.transform = transform
         self.list_files = sorted(self.path.glob('*.jpg'))
         self.hdf5_file = self.path.parent / (str(self.path.name) + '.hdf5')
         if not self.hdf5_file.exists():
             self.convert_to_h5(path, self.hdf5_file)
-        #self.images = np.empty((len(self.list_files), 3, self.transform.output_shape[0], self.transform.output_shape[1]),
-        #                       dtype=np.float32)
         self.load_images()
+        # df_attr is pandas Dataframe containing conditional vectors for each image
         self.df_attr = pd.read_csv(str(self.path.parent/'list_attr_celeba.txt'), sep='\s+', header=1)
         self.conditions = list(conditions)
-        self.df_attr = self.df_attr[list(conditions)] # 'Mustache', 'Bald',
+        self.df_attr = self.df_attr[list(conditions)]
         self.y_size = len(self.df_attr.columns)
 
     def __len__(self):
-        return len(self.list_files)
+        return len(self.images)
 
     def find_image(self, y):
+        # find index of random image with conditional vector y
         idx = self.df_attr.index.get_loc(self.df_attr[(self.df_attr == y).all(axis=1)].sample(1).index[0])
         return idx
 
@@ -78,24 +82,49 @@ class Data(Dataset):
 
     def __getitem__(self, idx):
         img = self.images[idx]
-        z = np.random.uniform(-1., 1.0, size=(self.z_size,)).astype(np.float32)
         if self.return_attr:
             y = self.df_attr.iloc[idx].values.astype(np.float32)
-            return img, z, y
+            return torch.from_numpy(img).cuda(), torch.from_numpy(y).cuda()
         else:
-            return img, z
+            # tuple with 1 element
+            return torch.from_numpy(img).cuda(),
 
 
-class ConditionSampler(object):
+class NoiseSampler(object):
     """
-    Generates y from training data distribution
+    Generates input noise z for generator from uniform distribution [-1., 1.]
     """
-    def __init__(self, data):
+    def __init__(self, z_size):
+        self.z_size = z_size
+
+    def sample(self):
+        z = np.random.uniform(-1., 1.0, size=(self.z_size,)).astype(np.float32)
+        # tuple with 1 element
+        # we need tuple here to have interface consistent with ConditionSampler
+        return torch.from_numpy(z).cuda(),
+
+    def sample_batch(self, batch_size):
+        z = np.random.uniform(-1., 1.0, size=(batch_size, self.z_size)).astype(np.float32)
+        # tuple with 1 element
+        # we need tuple here to have interface consistent with ConditionSampler
+        return torch.from_numpy(z).cuda(),
+
+
+class ConditionSampler(NoiseSampler):
+    """
+    Generates input noise z for generator from uniform distribution [-1., 1.]
+    and condition y from training data distribution
+    """
+    def __init__(self, data, z_size):
+        super().__init__(z_size)
         self.df_attr = data.df_attr
         self.conditions = data.conditions
 
     def sample(self):
-        return self.df_attr.sample(1).iloc[0].values.astype(np.float32)
+        z = NoiseSampler.sample(self)[0]
+        return z, torch.from_numpy(self.df_attr.sample(1).iloc[0].values.astype(np.float32)).cuda()
 
     def sample_batch(self, batch_size):
-        return torch.tensor(self.df_attr.sample(batch_size).values.astype(np.float32))
+        z = NoiseSampler.sample_batch(self, batch_size)[0]
+        y = self.df_attr.sample(batch_size).values.astype(np.float32)
+        return z, torch.tensor(y).cuda()

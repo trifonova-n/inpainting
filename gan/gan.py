@@ -1,8 +1,5 @@
 import torch
 import torch.nn as nn
-from pathlib import Path
-from gan.losses import GeneratorLoss, DiscriminatorLoss
-from gan.checkpoint import load_checkpoint, save_checkpoint, get_last_checkpoint
 
 
 class GeneratorNet(torch.nn.Module):
@@ -56,9 +53,7 @@ class GeneratorNet(torch.nn.Module):
         out = self.layer2(out)
         out = self.layer3(out)
         out = self.layer4(out)
-        #self.noise.normal_(0, self.eps)
-
-        return out# + self.noise
+        return out
 
 
 class Discriminator(torch.nn.Module):
@@ -138,9 +133,7 @@ class Generator5Net(torch.nn.Module):
         out = self.layer2(out)
         out = self.layer3(out)
         out = self.layer4(out)
-        #self.noise.normal_(0, self.eps)
-
-        return out# + self.noise
+        return out
 
 
 class Discriminator5(torch.nn.Module):

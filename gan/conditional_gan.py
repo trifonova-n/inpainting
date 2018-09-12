@@ -1,8 +1,5 @@
 import torch
 import torch.nn as nn
-from pathlib import Path
-from gan.losses import GeneratorLoss, DiscriminatorLoss
-from gan.checkpoint import load_checkpoint, save_checkpoint, get_last_checkpoint
 
 
 class GeneratorNet(torch.nn.Module):
@@ -52,6 +49,11 @@ class GeneratorNet(torch.nn.Module):
         self.eps = 0.01
 
     def forward(self, z, y):
+        """
+        :param z: noise tensor (b, z_size)
+        :param y: condition tensor (b, y_size)
+        :return:
+        """
         input = torch.cat((z, y), 1)
         out = self.layer0(input).view(-1, 1024, 4, 4)
         out = self.layer1(out)
@@ -145,9 +147,7 @@ class Generator5Net(torch.nn.Module):
         out = self.layer2(out)
         out = self.layer3(out)
         out = self.layer4(out)
-        #self.noise.normal_(0, self.eps)
-
-        return out# + self.noise
+        return out
 
 
 class Discriminator5(torch.nn.Module):
