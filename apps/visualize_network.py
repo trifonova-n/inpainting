@@ -24,9 +24,8 @@ if __name__ == '__main__':
     visualizer.update_losses(2., 7., type='validation')
     visualizer.update_losses(4., 8., type='validation')
     visualizer.update_losses(6., 9., type='validation')
-    for batch, in loader:
-        visualizer.plot_batch(batch, ['img1', 'img2', 'img3', 'img4'])
-        break
+    batch, = next(iter(loader))
+    visualizer.plot_batch(batch, ['img1', 'img2', 'img3', 'img4'])
     print(visualizer.env_name)
     print('data:', visualizer.vis.win_hash(win=visualizer.valid_losses_plt, env=visualizer.env_name))
     visualizer.save()
