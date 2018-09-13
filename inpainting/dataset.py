@@ -81,6 +81,7 @@ class Data(Dataset):
                 dset[i] = img
 
     def __getitem__(self, idx):
+        idx = int(idx)
         img = self.images[idx]
         if self.return_attr:
             y = self.df_attr.iloc[idx].values.astype(np.float32)
