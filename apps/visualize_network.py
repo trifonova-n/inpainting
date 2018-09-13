@@ -2,6 +2,7 @@ from inpainting.visualizer import Visualizer
 from argparse import ArgumentParser
 from inpainting.dataset import ConditionSampler, Data
 import inpainting.celeba_config as conf
+from torch.utils.data import DataLoader
 
 if __name__ == '__main__':
     parser = ArgumentParser()
@@ -12,7 +13,9 @@ if __name__ == '__main__':
     Z_SIZE = 100
 
     data = Data(DATA_PATH, Z_SIZE)
+    loader = DataLoader(data, batch_size=4, num_workers=conf.NUM_WORKERS, shuffle=True)
     y_sampler = ConditionSampler(data=data, z_size=Z_SIZE)
+
     conf.ENV_NAME = 'visualize_network'
     visualizer = Visualizer(conf, noise_sampler=y_sampler)
     visualizer.set_env('visualize_network')
@@ -21,6 +24,9 @@ if __name__ == '__main__':
     visualizer.update_losses(2., 7., type='validation')
     visualizer.update_losses(4., 8., type='validation')
     visualizer.update_losses(6., 9., type='validation')
+    for batch, in loader:
+        visualizer.plot_batch(batch, ['img1', 'img2', 'img3', 'img4'])
+        break
     print(visualizer.env_name)
     print('data:', visualizer.vis.win_hash(win=visualizer.valid_losses_plt, env=visualizer.env_name))
     visualizer.save()

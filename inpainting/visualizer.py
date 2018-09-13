@@ -15,15 +15,15 @@ class Visualizer(object):
         self.train_losses_plt = 'train_losses'
         self.valid_losses_plt = 'val_losses'
         self.gen_res_img = 'gen_res'
-        self.epoch = 0
         self.noise_sampler = noise_sampler
         if hasattr(config, 'conditions'):
             self.cd = ConditionDescriber(config.conditions)
         # creates new environment version by default
         # set_env can be used to specify usage of existing environment
         self._set_new_env_version(self.env_name)
+        self.text = "Text log:"
 
-    def update_losses(self, g_loss, d_loss, type):
+    def update_losses(self, epoch, g_loss, d_loss, type):
         if type == 'validation':
             win = self.valid_losses_plt
         elif type == 'train':
@@ -31,15 +31,15 @@ class Visualizer(object):
         else:
             print('Unknown losses type: ', type)
             return
-        self.epoch += 1
         Y = np.array([[g_loss, d_loss]])
-        X = np.array([self.epoch])
-        self.vis.line(Y=Y, X=X, win=win, env=self.env_name, update='append', opts=dict(legend=['generator', 'discriminator']))
+        X = np.array([epoch])
+        self.vis.line(Y=Y, X=X, win=win, env=self.env_name, update='append',
+                      opts=dict(title=type + " losses", legend=['generator', 'discriminator']))
         print("Update losses")
 
     def plot_batch(self, batch, descriptions):
         caption = ', '.join(descriptions)
-        self.vis.images(batch, opts=dict(caption=caption), env=self.env_name, win=self.gen_res_img)
+        self.vis.images((batch + 1.0)/2.0, opts=dict(title=caption), env=self.env_name, win=self.gen_res_img)
 
     def show_generator_results(self, generator):
         noise = self.noise_sampler.sample_batch(4)
@@ -54,7 +54,8 @@ class Visualizer(object):
         print("show_generator_results")
 
     def log_text(self, msg):
-        self.vis.text(msg, win=self.log_win, env=self.env_name)
+        self.text += "<br>" + msg
+        self.vis.text(self.text, win=self.log_win, env=self.env_name)
 
     def save(self):
         self.vis.save([self.env_name])
