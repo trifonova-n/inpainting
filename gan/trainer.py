@@ -19,15 +19,16 @@ class GanTrainer(object):
         self.discriminator = discriminator
         self.config = config
         self.g_optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, generator.parameters()),
-                                            lr=lr, betas=(0.5, 0.999))
+                                            lr=lr, betas=(0.5, 0.999), weight_decay=1e-5)
         self.d_optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, discriminator.parameters()),
-                                            lr=lr, betas=(0.5, 0.999))
+                                            lr=lr, betas=(0.5, 0.999), weight_decay=1e-5)
         self.visualizer = visualizer
         self.current_epoch = 0
         self.noise_sampler = noise_sampler
         self.generator_template = 'generator_%d.pth'
         self.discriminator_template = 'discriminator_%d.pth'
         self.checkpoint_template = 'checkpoint_%d.pth'
+        self.freezing_thresh = 0.7
 
     def train(self, train_loader, valid_loader=None, n_epochs=10):
         try:
@@ -61,6 +62,7 @@ class GanTrainer(object):
         k_it = 0
         generator_loss = GeneratorLoss()
         discriminator_loss = DiscriminatorLoss(label_smoothing=self.config.label_smoothing)
+        freeze_discriminator = False
 
         for sample in loader:
             # sample is (img,) tuple for regular gan
@@ -74,11 +76,10 @@ class GanTrainer(object):
 
             D_loss = discriminator_loss(D_logit_real, D_logit_fake)
             D_train_loss += D_loss.data
-
-            D_loss.backward()
-            self.d_optimizer.step()
+            if not freeze_discriminator:
+                D_loss.backward()
+                self.d_optimizer.step()
             n_d_steps += 1
-
             k_it += 1
 
             if k_it == self.config.k:
@@ -92,6 +93,10 @@ class GanTrainer(object):
                 self.g_optimizer.step()
                 k_it = 0
                 n_g_steps += 1
+                if D_loss < G_loss*self.freezing_thresh:
+                    freeze_discriminator = True
+                else:
+                    freeze_discriminator = False
                 del G_loss
 
             # reduce GPU memory usage
