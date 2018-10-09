@@ -118,6 +118,7 @@ class GanTrainer(object):
         generator_loss = GeneratorLoss()
         discriminator_loss = DiscriminatorLoss(label_smoothing=self.config.label_smoothing)
         for sample in loader:
+            sample = (s.cuda() for s in sample)
             D_real, D_logit_real = self.discriminator(*sample)
             D_fake, D_logit_fake = self.discriminator_on_fake(loader.batch_size)
 

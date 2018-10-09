@@ -85,10 +85,10 @@ class Data(Dataset):
         img = self.images[idx]
         if self.return_attr:
             y = self.df_attr.iloc[idx].values.astype(np.float32)
-            return torch.from_numpy(img).cuda(), torch.from_numpy(y).cuda()
+            return img, y
         else:
             # tuple with 1 element
-            return torch.from_numpy(img).cuda(),
+            return img,
 
 
 class NoiseSampler(object):
