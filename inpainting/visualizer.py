@@ -37,6 +37,11 @@ class Visualizer(object):
                       opts=dict(title=type + " losses", legend=['generator', 'discriminator']))
         print("Update losses")
 
+    def update_plot(self, x, y, name):
+        Y = np.array([y])
+        X = np.array([x])
+        self.vis.line(Y=Y, X=X, win=name, env=self.env_name, update='append', opts=dict(title=name))
+
     def plot_batch(self, batch, descriptions):
         caption = ', '.join(descriptions)
         self.vis.images((batch + 1.0)/2.0, opts=dict(title=caption), env=self.env_name, win=self.gen_res_img)
