@@ -11,11 +11,15 @@ class Estimator(object):
 
 
 class FIDEstimator(Estimator):
-    def __init__(self, noise_sampler, device='cuda:1', limit=100):
+    def __init__(self, noise_sampler, config, limit=100):
         super().__init__()
         self.dims = 2048
         block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[self.dims]
-        self.device = torch.device(device)
+        self.generator_device = torch.device(config.DEVICE)
+        if hasattr(config, 'ESTIMATOR_DEVICE'):
+            self.device = torch.device(config.ESTIMATOR_DEVICE)
+        else:
+            self.device = self.generator_device
         self.model = InceptionV3([block_idx]).to(self.device).eval()
         self.noise_sampler = noise_sampler
         self.limit = limit
@@ -32,6 +36,7 @@ class FIDEstimator(Estimator):
         X_fake = []
         for idx, sample in zip(range(self.limit), loader):
             noise = self.noise_sampler.sample_batch(loader.batch_size)
+            noise = [c.to(self.generator_device) for c in noise]
             G_sample = generator(*noise)
             X_real.append(sample[0].numpy())
             X_fake.append(G_sample.data.cpu().numpy()[:sample[0].shape[0], ...])

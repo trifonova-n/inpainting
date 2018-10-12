@@ -22,6 +22,7 @@ class Visualizer(object):
         # set_env can be used to specify usage of existing environment
         self._set_new_env_version(self.env_name)
         self.text = "Text log:"
+        self.device = torch.device(config.DEVICE)
 
     def update_losses(self, epoch, g_loss, d_loss, type):
         if type == 'validation':
@@ -48,6 +49,7 @@ class Visualizer(object):
 
     def show_generator_results(self, generator):
         noise = self.noise_sampler.sample_batch(4)
+        noise = [c.to(self.device) for c in noise]
         G_sample = generator(*noise)
         # if conditional gan
         if len(noise) > 1:

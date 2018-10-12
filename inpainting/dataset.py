@@ -102,13 +102,13 @@ class NoiseSampler(object):
         z = np.random.uniform(-1., 1.0, size=(self.z_size,)).astype(np.float32)
         # tuple with 1 element
         # we need tuple here to have interface consistent with ConditionSampler
-        return torch.from_numpy(z).cuda(),
+        return torch.from_numpy(z),
 
     def sample_batch(self, batch_size):
         z = np.random.uniform(-1., 1.0, size=(batch_size, self.z_size)).astype(np.float32)
         # tuple with 1 element
         # we need tuple here to have interface consistent with ConditionSampler
-        return torch.from_numpy(z).cuda(),
+        return torch.from_numpy(z),
 
 
 class ConditionSampler(NoiseSampler):
@@ -123,9 +123,9 @@ class ConditionSampler(NoiseSampler):
 
     def sample(self):
         z = NoiseSampler.sample(self)[0]
-        return z, torch.from_numpy(self.df_attr.sample(1).iloc[0].values.astype(np.float32)).cuda()
+        return z, torch.from_numpy(self.df_attr.sample(1).iloc[0].values.astype(np.float32))
 
     def sample_batch(self, batch_size):
         z = NoiseSampler.sample_batch(self, batch_size)[0]
         y = self.df_attr.sample(batch_size).values.astype(np.float32)
-        return z, torch.tensor(y).cuda()
+        return z, torch.tensor(y)

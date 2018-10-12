@@ -154,6 +154,7 @@ class GanTrainer(object):
         # noise for unconditional gan is (z,) tuple with random noise vector from uniform distribution [-1, 1]
         # for conditional gan noise is (z, y) tuple where y is conditional vector defined by config.conditions
         noise = self.noise_sampler.sample_batch(batch_size)
+        noise = (c.cuda() for c in noise)
         # empty tuple for not conditional gan
         condition = noise[1:]
         G_sample = self.generator(*noise)
