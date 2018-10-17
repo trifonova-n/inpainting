@@ -44,4 +44,5 @@ if __name__ == '__main__':
         trainer.load_checkpoint(epoch)
         score = estimator.score(generator, loader=valid_loader)
         visualizer.update_plot(epoch, score, 'FID')
+        visualizer.save()
         print("Epoch: ", epoch, ": ", score)
