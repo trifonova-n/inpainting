@@ -1,10 +1,11 @@
 from gan.losses import GeneratorLoss, DiscriminatorLoss
 import torch
 from pathlib import Path
+import traceback
 
 
 class GanTrainer(object):
-    def __init__(self, generator, discriminator, config, noise_sampler, lr=0.0002, visualizer=None):
+    def __init__(self, generator, discriminator, config, noise_sampler, lr=0.0002, visualizer=None, estimator=None):
         """
         GanTrainer class can be used for training conditional or unconditional gan
         :param generator: generator network, takes z noise as input if unconditional and z, y if conditional
@@ -15,6 +16,7 @@ class GanTrainer(object):
         :param lr: learning rate
         :param visualizer: visualizer class that supports update_losses(g_loss, d_loss) and show_generator_results(generator)
         """
+        self.device = torch.device(config.DEVICE)
         self.generator = generator
         self.discriminator = discriminator
         self.config = config
@@ -23,6 +25,7 @@ class GanTrainer(object):
         self.d_optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, discriminator.parameters()),
                                             lr=lr, betas=(0.5, 0.999), weight_decay=1e-5)
         self.visualizer = visualizer
+        self.estimator = estimator
         self.current_epoch = 0
         self.noise_sampler = noise_sampler
         self.generator_template = 'generator_%d.pth'
@@ -31,19 +34,19 @@ class GanTrainer(object):
         self.freezing_thresh = 0.7
 
     def train(self, train_loader, valid_loader=None, n_epochs=10):
-        try:
-            last_epoch = self.current_epoch
-            for self.current_epoch in range(last_epoch + 1, n_epochs + 1):
-                self.train_epoch(train_loader)
-                self.save_checkpoint()
-                if valid_loader is not None:
-                    self.valid_epoch(valid_loader)
-        except Exception as e:
-            import traceback
-            traceback_str = '<br>'.join(traceback.format_tb(e.__traceback__))
-            if self.visualizer is not None:
-                self.visualizer.log_text(traceback_str + '<br>' + str(e))
-            raise e
+        with torch.cuda.device(self.device.index):
+            try:
+                last_epoch = self.current_epoch
+                for self.current_epoch in range(last_epoch + 1, n_epochs + 1):
+                    self.train_epoch(train_loader)
+                    self.save_checkpoint()
+                    if valid_loader is not None:
+                        self.valid_epoch(valid_loader)
+            except Exception as e:
+                traceback_str = '<br>'.join(traceback.format_tb(e.__traceback__))
+                if self.visualizer is not None:
+                    self.visualizer.log_text(traceback_str + '<br>' + str(e))
+                raise e
 
     def load_last_checkpoint(self):
         model_path = self.config.MODEL_PATH
@@ -65,6 +68,7 @@ class GanTrainer(object):
         freeze_discriminator = False
 
         for sample in loader:
+            sample = (s.cuda() for s in sample)
             # sample is (img,) tuple for regular gan
             # and (img, y) tuple for conditional gan
             self.d_optimizer.zero_grad()
@@ -118,6 +122,7 @@ class GanTrainer(object):
         generator_loss = GeneratorLoss()
         discriminator_loss = DiscriminatorLoss(label_smoothing=self.config.label_smoothing)
         for sample in loader:
+            sample = (s.cuda() for s in sample)
             D_real, D_logit_real = self.discriminator(*sample)
             D_fake, D_logit_fake = self.discriminator_on_fake(loader.batch_size)
 
@@ -141,10 +146,16 @@ class GanTrainer(object):
         else:
             print("%d epoch Validation Losses: G: %d, D: %d" % (self.current_epoch, G_valid_loss, D_valid_loss))
 
+        if self.estimator:
+            score = self.estimator.score(self.generator, loader)
+            if self.visualizer:
+                self.visualizer.update_plot(self.current_epoch, score, 'FID')
+
     def discriminator_on_fake(self, batch_size):
         # noise for unconditional gan is (z,) tuple with random noise vector from uniform distribution [-1, 1]
         # for conditional gan noise is (z, y) tuple where y is conditional vector defined by config.conditions
         noise = self.noise_sampler.sample_batch(batch_size)
+        noise = [c.cuda() for c in noise]
         # empty tuple for not conditional gan
         condition = noise[1:]
         G_sample = self.generator(*noise)

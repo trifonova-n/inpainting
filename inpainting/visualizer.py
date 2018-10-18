@@ -22,6 +22,7 @@ class Visualizer(object):
         # set_env can be used to specify usage of existing environment
         self._set_new_env_version(self.env_name)
         self.text = "Text log:"
+        self.device = torch.device(config.DEVICE)
 
     def update_losses(self, epoch, g_loss, d_loss, type):
         if type == 'validation':
@@ -37,12 +38,25 @@ class Visualizer(object):
                       opts=dict(title=type + " losses", legend=['generator', 'discriminator']))
         print("Update losses")
 
+    def update_plot(self, x, y, name):
+        """
+        Update plot with given name adding new data point
+        :param x: scalar
+        :param y: scalar
+        :param name: name of the plot window
+        :return:
+        """
+        Y = np.array([y])
+        X = np.array([x])
+        self.vis.line(Y=Y, X=X, win=name, env=self.env_name, update='append', opts=dict(title=name))
+
     def plot_batch(self, batch, descriptions):
         caption = ', '.join(descriptions)
         self.vis.images((batch + 1.0)/2.0, opts=dict(title=caption), env=self.env_name, win=self.gen_res_img)
 
     def show_generator_results(self, generator):
         noise = self.noise_sampler.sample_batch(4)
+        noise = [c.to(self.device) for c in noise]
         G_sample = generator(*noise)
         # if conditional gan
         if len(noise) > 1:
