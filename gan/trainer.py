@@ -1,6 +1,7 @@
 from gan.losses import GeneratorLoss, DiscriminatorLoss
 import torch
 from pathlib import Path
+import traceback
 
 
 class GanTrainer(object):
@@ -42,7 +43,6 @@ class GanTrainer(object):
                     if valid_loader is not None:
                         self.valid_epoch(valid_loader)
             except Exception as e:
-                import traceback
                 traceback_str = '<br>'.join(traceback.format_tb(e.__traceback__))
                 if self.visualizer is not None:
                     self.visualizer.log_text(traceback_str + '<br>' + str(e))

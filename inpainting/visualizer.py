@@ -39,6 +39,13 @@ class Visualizer(object):
         print("Update losses")
 
     def update_plot(self, x, y, name):
+        """
+        Update plot with given name adding new data point
+        :param x: scalar
+        :param y: scalar
+        :param name: name of the plot window
+        :return:
+        """
         Y = np.array([y])
         X = np.array([x])
         self.vis.line(Y=Y, X=X, win=name, env=self.env_name, update='append', opts=dict(title=name))
