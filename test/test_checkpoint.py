@@ -54,7 +54,7 @@ def trainer(dataloaders, models, conf):
     generator, discriminator = models
     noise_sampler = NoiseSampler(conf.Z_SIZE)
     trainer = GanTrainer(generator, discriminator, conf, noise_sampler)
-    trainer.train(train_loader, n_epochs=3)
+    trainer.train(train_loader, n_epochs=4)
     return trainer
 
 
@@ -78,7 +78,7 @@ def test_optimizer_loading(trainer, empty_trainer, dataloaders):
     train_loader, valid_loader = dataloaders
     trainer.save_checkpoint()
     empty_trainer.load_checkpoint(2)
-    empty_trainer.train(train_loader, n_epochs=3)
+    empty_trainer.train(train_loader, n_epochs=4)
 
     for p, pe in zip(trainer.generator.parameters(), empty_trainer.generator.parameters()):
         assert torch.allclose(p.data, pe.data)

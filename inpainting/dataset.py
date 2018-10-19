@@ -99,17 +99,22 @@ class NoiseSampler(object):
     """
     Generates input noise z for generator from uniform distribution [-1., 1.]
     """
-    def __init__(self, z_size):
+    def __init__(self, z_size, seed=1):
         self.z_size = z_size
+        self.seed = seed
+        self.randomState = np.random.RandomState(self.seed)
+
+    def manual_seed(self, seed):
+        self.randomState = np.random.RandomState(self.seed)
 
     def sample(self):
-        z = np.random.uniform(-1., 1.0, size=(self.z_size,)).astype(np.float32)
+        z = self.randomState.uniform(-1., 1.0, size=(self.z_size,)).astype(np.float32)
         # tuple with 1 element
         # we need tuple here to have interface consistent with ConditionSampler
         return (torch.from_numpy(z),)
 
     def sample_batch(self, batch_size):
-        z = np.random.uniform(-1., 1.0, size=(batch_size, self.z_size)).astype(np.float32)
+        z = self.randomState.uniform(-1., 1.0, size=(batch_size, self.z_size)).astype(np.float32)
         # tuple with 1 element
         # we need tuple here to have interface consistent with ConditionSampler
         return (torch.from_numpy(z),)
@@ -127,9 +132,9 @@ class ConditionSampler(NoiseSampler):
 
     def sample(self):
         z = NoiseSampler.sample(self)[0]
-        return z, torch.from_numpy(self.df_attr.sample(1).iloc[0].values.astype(np.float32))
+        return z, torch.from_numpy(self.df_attr.sample(1, random_state=self.randomState).iloc[0].values.astype(np.float32))
 
     def sample_batch(self, batch_size):
         z = NoiseSampler.sample_batch(self, batch_size)[0]
-        y = self.df_attr.sample(batch_size).values.astype(np.float32)
+        y = self.df_attr.sample(batch_size, random_state=self.randomState).values.astype(np.float32)
         return z, torch.tensor(y)
