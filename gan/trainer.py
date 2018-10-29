@@ -211,7 +211,7 @@ class GanTrainer(object):
         self.seed = state.get('seed', 1)
         visdom_env = state.get('visdom_env')
         self.current_epoch = epoch
-        if self.visualizer is not None and visdom_env:
+        if self.visualizer is not None and visdom_env and not self.config.NEW_VISDOM_ENV:
             self.visualizer.set_env(visdom_env)
 
     @staticmethod

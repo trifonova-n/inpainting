@@ -105,6 +105,7 @@ class NoiseSampler(object):
         self.randomState = np.random.RandomState(self.seed)
 
     def manual_seed(self, seed):
+        self.seed = seed
         self.randomState = np.random.RandomState(self.seed)
 
     def sample(self):
