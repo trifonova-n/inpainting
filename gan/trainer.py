@@ -5,7 +5,7 @@ import traceback
 
 
 class GanTrainer(object):
-    def __init__(self, generator, discriminator, config, noise_sampler, lr=0.0002, visualizer=None, estimator=None):
+    def __init__(self, generator, discriminator, config, noise_sampler, lr=0.0002, visualizer=None, estimator=None, seed=1):
         """
         GanTrainer class can be used for training conditional or unconditional gan
         :param generator: generator network, takes z noise as input if unconditional and z, y if conditional
@@ -32,6 +32,8 @@ class GanTrainer(object):
         self.discriminator_template = 'discriminator_%d.pth'
         self.checkpoint_template = 'checkpoint_%d.pth'
         self.freezing_thresh = 0.7
+        self.seed = seed
+        torch.backends.cudnn.deterministic = True
 
     def train(self, train_loader, valid_loader=None, n_epochs=10):
         with torch.cuda.device(self.device.index):
@@ -55,6 +57,8 @@ class GanTrainer(object):
             self.load_checkpoint(last_epoch)
 
     def train_epoch(self, loader):
+        torch.manual_seed(self.seed + self.current_epoch)
+        self.noise_sampler.manual_seed(self.seed + self.current_epoch)
         self.generator.train()
         self.discriminator.train()
         G_train_loss = 0.0
@@ -183,7 +187,8 @@ class GanTrainer(object):
             'discriminator': str(discriminator_path),
             'g_optimizer': self.g_optimizer.state_dict(),
             'd_optimizer': self.d_optimizer.state_dict(),
-            'visdom_env': visdom_env
+            'visdom_env': visdom_env,
+            'seed': self.seed
         }
         checkpoint_path = self.checkpoint_template % (self.current_epoch,)
         torch.save(state, str(save_path / checkpoint_path))
@@ -203,9 +208,10 @@ class GanTrainer(object):
         self.discriminator.load_state_dict(torch.load(str(load_path / discriminator_path)))
         self.g_optimizer.load_state_dict(state['g_optimizer'])
         self.d_optimizer.load_state_dict(state['d_optimizer'])
+        self.seed = state.get('seed', 1)
         visdom_env = state.get('visdom_env')
         self.current_epoch = epoch
-        if self.visualizer is not None and visdom_env:
+        if self.visualizer is not None and visdom_env and not self.config.NEW_VISDOM_ENV:
             self.visualizer.set_env(visdom_env)
 
     @staticmethod
