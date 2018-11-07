@@ -69,7 +69,7 @@ class GanTrainer(object):
         k_it = 0
         generator_loss = GeneratorLoss()
         discriminator_loss = DiscriminatorLoss(label_smoothing=self.config.label_smoothing)
-        freeze_discriminator = False
+        #freeze_discriminator = False
 
         for sample in loader:
             sample = (s.cuda() for s in sample)
@@ -84,9 +84,9 @@ class GanTrainer(object):
 
             D_loss = discriminator_loss(D_logit_real, D_logit_fake)
             D_train_loss += D_loss.data
-            if not freeze_discriminator:
-                D_loss.backward()
-                self.d_optimizer.step()
+            #if not freeze_discriminator:
+            D_loss.backward()
+            self.d_optimizer.step()
             n_d_steps += 1
             k_it += 1
 
@@ -101,11 +101,11 @@ class GanTrainer(object):
                 self.g_optimizer.step()
                 k_it = 0
                 n_g_steps += 1
-                if D_loss < G_loss*self.freezing_thresh:
-                    freeze_discriminator = True
-                else:
-                    freeze_discriminator = False
-                del G_loss
+                #if D_loss < G_loss*self.freezing_thresh:
+                #    freeze_discriminator = True
+                #else:
+                #    freeze_discriminator = False
+                #del G_loss
 
             # reduce GPU memory usage
             del sample, D_real, D_logit_real, D_loss, D_fake, D_logit_fake

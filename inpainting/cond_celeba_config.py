@@ -13,4 +13,4 @@ Y_SIZE = len(conditions)
 label_smoothing = 0.25
 k = 1  # how many times to update discriminator for 1 generator update
 ENV_NAME = "conditional_gan"
-NEW_VISDOM_ENV=False
+NEW_VISDOM_ENV=True
