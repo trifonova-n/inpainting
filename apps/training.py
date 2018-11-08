@@ -1,42 +1,40 @@
-from inpainting.dataset import Data, ResizeTransform
-from gan.conditional_gan import CGenerator5Net, CDiscriminator5, train
-from torch.utils.data import DataLoader
+from inpainting.dataset import Data, ResizeTransform, NoiseSampler
+from gan.gan import Generator5Net, Discriminator5
+from gan.trainer import GanTrainer
 import torch
+print(torch.__version__)
+from torch.utils.data import DataLoader, random_split
+
+import matplotlib.pyplot as plt
+import pandas as pd
 from inpainting.visualize import plot_batch
-from inpainting.visualize import cGanPlotLossCallback
+from inpainting.visualize import GanPlotLossCallback as PlotLossCallback
+from inpainting import celeba_config as conf
+from inpainting.visualizer import Visualizer
+from performance.estimator import FIDEstimator
+
+device = torch.device(conf.DEVICE)
 
 
-DATA_PATH = 'data/img_align_celeba'
-BATCH_SIZE = 512
-NUM_WORKERS = 1
-Z_SIZE = 100
-MODEL_PATH = 'conditional_model/'
-LOAD_MODEL = False
-LOAD_EPOCH_N = 2
-
-
-transform = ResizeTransform(path='data')
-data = Data(DATA_PATH, Z_SIZE, transform, return_attr=True)
-data_loader = DataLoader(data, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS, drop_last=True)
+transform = ResizeTransform()
+data = Data(conf.DATA_PATH, transform)
+train_size = int(0.8 * len(data))
+valid_size = len(data) - train_size
+train_data, valid_data = torch.utils.data.random_split(data, [train_size, valid_size])
+train_loader = DataLoader(train_data, batch_size=conf.BATCH_SIZE, num_workers=conf.NUM_WORKERS, shuffle=True)
+valid_loader = DataLoader(valid_data, batch_size=conf.BATCH_SIZE, num_workers=conf.NUM_WORKERS, shuffle=True)
 print('Dataset size: ', len(data))
-Y_SIZE = data.y_size
+noise_sampler = NoiseSampler(conf.Z_SIZE)
 
+estimator = FIDEstimator(noise_sampler, config=conf)
 
-generator = CGenerator5Net(Z_SIZE, Y_SIZE).cuda()
-discriminator = CDiscriminator5(Y_SIZE).cuda()
+generator = Generator5Net(conf.Z_SIZE).to(device)
+discriminator = Discriminator5().to(device)
 
+visualizer = Visualizer(conf, noise_sampler)
+trainer = GanTrainer(generator, discriminator, conf, noise_sampler, visualizer=visualizer, estimator=estimator)
 
-if LOAD_MODEL:
-    generator.load_state_dict(torch.load(MODEL_PATH + 'generator_%d.pth' % (LOAD_EPOCH_N,)))
-    discriminator.load_state_dict(torch.load(MODEL_PATH + 'discriminator_%d.pth' % (LOAD_EPOCH_N,)))
+if conf.CONTINUE_TRAINING:
+    trainer.load_checkpoint(40)
 
-
-callback = cGanPlotLossCallback(generator, discriminator)
-train(generator, discriminator, data_loader, 100, k=1, callback_func=callback)
-
-Z = torch.normal(mean=torch.zeros(4, generator.z_size)).cuda()
-G_sample = generator(Z)
-sample = G_sample.data.cpu().numpy()
-print(discriminator.layer4.weight.cpu().detach().numpy())
-plot_batch((G_sample.data.cpu().numpy() + 1) / 2)
-
+trainer.train(train_loader, valid_loader, n_epochs=100)
