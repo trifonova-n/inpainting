@@ -17,3 +17,4 @@ cython == 0.28.2
 scipy == 1.0.1
 h5py
 visdom
+torchsummary

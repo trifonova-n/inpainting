@@ -33,6 +33,8 @@ class GanTrainer(object):
         self.checkpoint_template = 'checkpoint_%d.pth'
         self.freezing_thresh = 0.7
         self.seed = seed
+        self.best_cost = 1000.0
+        self.current_model_is_best = True
         torch.backends.cudnn.deterministic = True
 
     def train(self, train_loader, valid_loader=None, n_epochs=10):
@@ -41,9 +43,10 @@ class GanTrainer(object):
                 last_epoch = self.current_epoch
                 for self.current_epoch in range(last_epoch + 1, n_epochs + 1):
                     self.train_epoch(train_loader)
-                    self.save_checkpoint()
                     if valid_loader is not None:
                         self.valid_epoch(valid_loader)
+                    if self.current_model_is_best:
+                        self.save_checkpoint()
             except Exception as e:
                 traceback_str = '<br>'.join(traceback.format_tb(e.__traceback__))
                 if self.visualizer is not None:
@@ -69,7 +72,6 @@ class GanTrainer(object):
         k_it = 0
         generator_loss = GeneratorLoss()
         discriminator_loss = DiscriminatorLoss(label_smoothing=self.config.label_smoothing)
-        #freeze_discriminator = False
 
         for sample in loader:
             sample = (s.cuda() for s in sample)
@@ -84,7 +86,6 @@ class GanTrainer(object):
 
             D_loss = discriminator_loss(D_logit_real, D_logit_fake)
             D_train_loss += D_loss.data
-            #if not freeze_discriminator:
             D_loss.backward()
             self.d_optimizer.step()
             n_d_steps += 1
@@ -101,11 +102,6 @@ class GanTrainer(object):
                 self.g_optimizer.step()
                 k_it = 0
                 n_g_steps += 1
-                #if D_loss < G_loss*self.freezing_thresh:
-                #    freeze_discriminator = True
-                #else:
-                #    freeze_discriminator = False
-                #del G_loss
 
             # reduce GPU memory usage
             del sample, D_real, D_logit_real, D_loss, D_fake, D_logit_fake
@@ -117,41 +113,46 @@ class GanTrainer(object):
                                           type='train')
             self.visualizer.show_generator_results(generator=self.generator)
 
-    def valid_epoch(self, loader):
-        self.generator.eval()
-        self.discriminator.eval()
-        G_valid_loss = 0.0
-        D_valid_loss = 0.0
-        n_steps = 0
-        generator_loss = GeneratorLoss()
-        discriminator_loss = DiscriminatorLoss(label_smoothing=self.config.label_smoothing)
-        for sample in loader:
-            sample = (s.cuda() for s in sample)
-            D_real, D_logit_real = self.discriminator(*sample)
-            D_fake, D_logit_fake = self.discriminator_on_fake(loader.batch_size)
+    def valid_epoch(self, loader, compute_losses=False):
+        if compute_losses:
+            self.generator.eval()
+            self.discriminator.eval()
+            G_valid_loss = 0.0
+            D_valid_loss = 0.0
+            n_steps = 0
+            generator_loss = GeneratorLoss()
+            discriminator_loss = DiscriminatorLoss(label_smoothing=self.config.label_smoothing)
+            for sample in loader:
+                sample = (s.cuda() for s in sample)
+                D_real, D_logit_real = self.discriminator(*sample)
+                D_fake, D_logit_fake = self.discriminator_on_fake(loader.batch_size)
 
-            D_loss = discriminator_loss(D_logit_real, D_logit_fake)
-            D_valid_loss += D_loss.data.cpu().numpy()
+                D_loss = discriminator_loss(D_logit_real, D_logit_fake)
+                D_valid_loss += D_loss.data.cpu().numpy()
 
-            D_fake, D_logit_fake = self.discriminator_on_fake(loader.batch_size)
-            G_loss = generator_loss(D_logit_fake)
-            G_valid_loss += G_loss.data.cpu().numpy()
-            n_steps += 1
-            # reduce GPU memory usage
-            del sample, D_real, D_logit_real, D_loss, D_fake, D_logit_fake, G_loss
+                D_fake, D_logit_fake = self.discriminator_on_fake(loader.batch_size)
+                G_loss = generator_loss(D_logit_fake)
+                G_valid_loss += G_loss.data.cpu().numpy()
+                n_steps += 1
+                # reduce GPU memory usage
+                del sample, D_real, D_logit_real, D_loss, D_fake, D_logit_fake, G_loss
 
-        G_valid_loss = G_valid_loss / n_steps
-        D_valid_loss = D_valid_loss / n_steps
-        if self.visualizer is not None:
-            self.visualizer.update_losses(epoch=self.current_epoch,
-                                          g_loss=G_valid_loss,
-                                          d_loss=D_valid_loss,
-                                          type='validation')
-        else:
-            print("%d epoch Validation Losses: G: %d, D: %d" % (self.current_epoch, G_valid_loss, D_valid_loss))
+            G_valid_loss = G_valid_loss / n_steps
+            D_valid_loss = D_valid_loss / n_steps
+            if self.visualizer is not None:
+                self.visualizer.update_losses(epoch=self.current_epoch,
+                                              g_loss=G_valid_loss,
+                                              d_loss=D_valid_loss,
+                                              type='validation')
+            else:
+                print("%d epoch Validation Losses: G: %d, D: %d" % (self.current_epoch, G_valid_loss, D_valid_loss))
 
         if self.estimator:
             score = self.estimator.score(self.generator, loader)
+            self.current_model_is_best = False
+            if self.best_cost > score:
+                self.best_cost = score
+                self.current_model_is_best = True
             if self.visualizer:
                 self.visualizer.update_plot(self.current_epoch, score, 'FID')
 

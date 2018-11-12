@@ -53,6 +53,7 @@ class FIDEstimator(object):
                 act_fake_batch = get_activations(G_sample, self.model, batch_size=self.estimator_batch_size, dims=self.dims, cuda=1)
                 act_real.append(act_real_batch)
                 act_fake.append(act_fake_batch)
+            del G_sample, sample
 
         act_real = np.concatenate(act_real)
         act_fake = np.concatenate(act_fake)
