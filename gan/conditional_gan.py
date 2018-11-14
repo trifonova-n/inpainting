@@ -50,13 +50,13 @@ class Discriminator5(torch.nn.Module):
         self.y_size = y_size
         self.relu_negative_slope = relu_negative_slope
         # input 3x64x64
-        self.layer0 = self.down_2(3, 16, batch_norm=False)
+        self.layer0 = down_2(3, 16, batch_norm=False)
         # 16x32x32
-        self.layer1 = self.down_2(16 + self.y_size, 64)
+        self.layer1 = down_2(16 + self.y_size, 64)
         # 64x16x16
-        self.layer2 = self.down_4(64, 256)
+        self.layer2 = down_4(64, 256)
         # 256x4x4
-        self.layer3 = self.down_4(256, 1024, kernel_size=3)
+        self.layer3 = down_4(256, 1024, kernel_size=3)
         # 1024x1x1
         self.layer4 = nn.Linear(1024, 1)
         self.out_layer = nn.Sigmoid()
