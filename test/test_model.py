@@ -2,34 +2,22 @@ from gan import gan, conditional_gan
 from torchsummary import summary
 
 
-def test_generator_structure(capsys):
+def test_generator_structure():
     z_size = 100
     generator_old = gan.Generator5Net(z_size).cuda()
     generator_new = gan.GeneratorNet(z_size).cuda()
 
-    summary(generator_old, input_size=(z_size,))
-    captured = capsys.readouterr()
-    old_summary = captured.out
-    summary(generator_new, input_size=(z_size,))
-    captured = capsys.readouterr()
-    new_summary = captured.out
-    print(old_summary)
-    print(new_summary)
+    old_summary = summary(generator_old, input_size=(z_size,))
+    new_summary = summary(generator_new, input_size=(z_size,))
     assert old_summary == new_summary
 
 
-def test_discriminator_structure(capsys):
+def test_discriminator_structure():
     discriminator_old = gan.Discriminator5().cuda()
     discriminator_new = gan.DiscriminatorNet().cuda()
 
-    summary(discriminator_old, input_size=(3, 64, 64))
-    captured = capsys.readouterr()
-    old_summary = captured.out
-    summary(discriminator_new, input_size=(3, 64, 64))
-    captured = capsys.readouterr()
-    new_summary = captured.out
-    print(old_summary)
-    print(new_summary)
+    old_summary = summary(discriminator_old, input_size=(3, 64, 64))
+    new_summary = summary(discriminator_new, input_size=(3, 64, 64))
     assert old_summary == new_summary
 
 

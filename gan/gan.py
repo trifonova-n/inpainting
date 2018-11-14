@@ -19,9 +19,9 @@ class GeneratorParams(Params):
         # we don't add batchnorm layers in several first
         # and end layers
         # index of first layer with batchnorm
-        self.bn_start_idx = self.get('bn_start_idx', 1)
+        self.bn_start_idx = self.get('bn_start_idx', 0)
         # index of last layer to have batchnorm
-        self.bn_end_idx = self.get('bn_end_idx', -1)
+        self.bn_end_idx = self.get('bn_end_idx', -3)
         self.z_size = self.get('z_size', 100)
 
 
@@ -66,8 +66,8 @@ class GeneratorNet(torch.nn.Module):
         up_layer = []
         in_channels = params.min_shape[0]
         for idx in range(1, n_up_layers + 1):
-            out_channels = in_channels // self.channel_scaling_factor
-            use_batchnorm = params.bn_start_idx <= idx < params.bn_end_idx
+            out_channels = in_channels // params.channel_scaling_factor
+            use_batchnorm = params.bn_start_idx <= idx <= params.bn_end_idx
             up_layer.append(up_2(in_channels, out_channels, kernel_size=5, batch_norm=use_batchnorm))
             in_channels = out_channels
         self.up_layer = nn.Sequential(*up_layer)
@@ -75,7 +75,7 @@ class GeneratorNet(torch.nn.Module):
         # out_layer generate image with 3 channels and values from -1 to 1
         out_layer = [nn.ConvTranspose2d(in_channels, params.out_shape[0], kernel_size=3, stride=1, padding=1)]
         if params.bn_end_idx >= n_layers - 1:
-            out_layer.append(out_layer.append(nn.BatchNorm2d(3)))
+            out_layer.append(nn.BatchNorm2d(3))
         out_layer.append(nn.Tanh())
         self.out_layer = nn.Sequential(*out_layer)
 
@@ -108,7 +108,7 @@ class DiscriminatorNet(torch.nn.Module):
         in_channels = params.start_channels
         for idx in range(1, n_down_layers):
             out_channels = in_channels * params.channel_scaling_factor
-            use_batchnorm = params.bn_start_idx <= idx < params.bn_end_idx
+            use_batchnorm = params.bn_start_idx <= idx <= params.bn_end_idx
             down_layer.append(down_2(in_channels, out_channels, batch_norm=use_batchnorm))
             in_channels = out_channels
         self.down_layer = nn.Sequential(*down_layer)
