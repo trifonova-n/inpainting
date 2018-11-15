@@ -35,3 +35,10 @@ class DiscriminatorParams(Params):
         # index of last layer to have batchnorm
         self.bn_end_idx = self.get('bn_end_idx', -1)
 
+
+class TrainingParams(Params):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.learning_rate = 0.0002
+        self.generator_weight_decay = 1e-5
+        self.discriminator_weight_decay = 1e-5
