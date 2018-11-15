@@ -60,14 +60,21 @@ def discriminator_hyperparams(start_channels, channel_scaling_factor, feature_im
 def test_generator(generator_hyperparams):
     z_size = generator_hyperparams['z_size']
     generator = gan.GeneratorNet(params=generator_hyperparams).cuda()
+    params = generator.hyper_params
+    for key in generator_hyperparams:
+        if key != 'bn_end_idx':
+            assert params[key] == generator_hyperparams[key]
+
     info = list(summary(generator, input_size=(z_size,)).items())
     first_layer = info[0][1]
     last_layer = info[-1][1]
     assert first_layer['input_shape'] == [-1, z_size]
     assert last_layer['output_shape'] == [-1, 3, 64, 64]
+    # convolution or linear layer number
     idx = 1
+    # arbitrary layer index in summary
     i = 0
-    if generator.hyper_params.bn_start_idx == 0:
+    if params.bn_start_idx == 0:
         i += 1
         assert re.match('^BatchNorm1d-\d+', info[i][0])
     i += 1
@@ -79,19 +86,63 @@ def test_generator(generator_hyperparams):
         input_shape = info[i][1]['input_shape']
         assert input_shape == expected_input_shape
         i += 1
-        if generator.hyper_params.bn_start_idx <= idx <= generator.hyper_params.bn_end_idx:
+        if params.bn_start_idx <= idx <= params.bn_end_idx:
             assert re.match('^BatchNorm2d-\d+', info[i][0])
             i += 1
         assert re.match('^ReLU-\d+', info[i][0])
         output_shape = info[i][1]['output_shape']
         expected_output_shape = [expected_input_shape[0],
-                                 int(expected_input_shape[1]/generator_hyperparams['channel_scaling_factor']),
+                                 int(expected_input_shape[1]/params.channel_scaling_factor),
                                  expected_input_shape[2]*2,
                                  expected_input_shape[3]*2]
         assert output_shape == expected_output_shape
         expected_input_shape = expected_output_shape
         i += 1
         idx += 1
+    assert re.match('^ConvTranspose2d-\d+', info[i][0])
+    i += 1
+    if params.bn_start_idx <= idx <= params.bn_end_idx:
+        assert re.match('^BatchNorm2d-\d+', info[i][0])
+        i += 1
+
+
+def test_discriminator(discriminator_hyperparams):
+    discriminator = gan.DiscriminatorNet(params=discriminator_hyperparams).cuda()
+    params = discriminator.hyper_params
+    for key in discriminator_hyperparams:
+        if key != 'bn_end_idx':
+            assert params[key] == discriminator_hyperparams[key]
+
+    info = list(summary(discriminator, input_size=(3, 64, 64)).items())
+    first_layer = info[0][1]
+    last_layer = info[-1][1]
+    assert first_layer['input_shape'] == [-1, 3, 64, 64]
+    assert last_layer['output_shape'] == [-1, 1]
+    idx = 0
+    i = 0
+
+    expected_input_shape = [*first_layer['input_shape']]
+    while expected_input_shape[2] > params.feature_img_size:
+        assert re.match('^Conv2d-\d+', info[i][0])
+        input_shape = info[i][1]['input_shape']
+        assert input_shape == expected_input_shape
+        i += 1
+        if params.bn_start_idx <= idx <= params.bn_end_idx:
+            assert re.match('^BatchNorm2d-\d+', info[i][0])
+            i += 1
+        assert re.match('^LeakyReLU-\d+', info[i][0])
+        output_shape = info[i][1]['output_shape']
+        expected_output_shape = [expected_input_shape[0],
+                                 int(expected_input_shape[1]*params.channel_scaling_factor),
+                                 expected_input_shape[2]//2,
+                                 expected_input_shape[3]//2]
+        if idx == 0:
+            expected_output_shape[1] = params.start_channels
+        assert output_shape == expected_output_shape
+        expected_input_shape = expected_output_shape
+        i += 1
+        idx += 1
+    assert re.match('^Linear-\d+', info[i][0])
 
 
 def test_generator_structure():
