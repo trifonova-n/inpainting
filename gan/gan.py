@@ -41,7 +41,7 @@ class DiscriminatorParams(Params):
 
 
 class GeneratorNet(torch.nn.Module):
-    def __init__(self, z_size, params=None):
+    def __init__(self, params=None):
         super(GeneratorNet, self).__init__()
         if params is None:
             params = GeneratorParams()
@@ -51,7 +51,7 @@ class GeneratorNet(torch.nn.Module):
         self.hyper_params = params
 
         # layer for linear transformation of noise vector to feature map with min_shape
-        noise_transf_layer = [nn.Linear(z_size, np.prod(params.min_shape))]
+        noise_transf_layer = [nn.Linear(params.z_size, np.prod(params.min_shape))]
         if params.bn_start_idx == 0:
             noise_transf_layer.append(nn.BatchNorm1d(np.prod(params.min_shape)))
         noise_transf_layer.append(nn.ReLU())
@@ -66,7 +66,7 @@ class GeneratorNet(torch.nn.Module):
         up_layer = []
         in_channels = params.min_shape[0]
         for idx in range(1, n_up_layers + 1):
-            out_channels = in_channels // params.channel_scaling_factor
+            out_channels = int(in_channels / params.channel_scaling_factor)
             use_batchnorm = params.bn_start_idx <= idx <= params.bn_end_idx
             up_layer.append(up_2(in_channels, out_channels, kernel_size=5, batch_norm=use_batchnorm))
             in_channels = out_channels
@@ -107,7 +107,7 @@ class DiscriminatorNet(torch.nn.Module):
 
         in_channels = params.start_channels
         for idx in range(1, n_down_layers):
-            out_channels = in_channels * params.channel_scaling_factor
+            out_channels = int(in_channels * params.channel_scaling_factor)
             use_batchnorm = params.bn_start_idx <= idx <= params.bn_end_idx
             down_layer.append(down_2(in_channels, out_channels, batch_norm=use_batchnorm))
             in_channels = out_channels
