@@ -35,6 +35,7 @@ class GanTrainer(object):
         self.seed = seed
         self.best_cost = 1000.0
         self.current_model_is_best = True
+        self.scores = []
         torch.backends.cudnn.deterministic = True
 
     def train(self, train_loader, valid_loader=None, n_epochs=10):
@@ -149,6 +150,7 @@ class GanTrainer(object):
 
         if self.estimator:
             score = self.estimator.score(self.generator, loader)
+            self.scores.append(score)
             self.current_model_is_best = False
             if self.best_cost > score:
                 self.best_cost = score
@@ -189,7 +191,8 @@ class GanTrainer(object):
             'g_optimizer': self.g_optimizer.state_dict(),
             'd_optimizer': self.d_optimizer.state_dict(),
             'visdom_env': visdom_env,
-            'seed': self.seed
+            'seed': self.seed,
+            'scores': self.scores
         }
         checkpoint_path = self.checkpoint_template % (self.current_epoch,)
         torch.save(state, str(save_path / checkpoint_path))
@@ -210,6 +213,7 @@ class GanTrainer(object):
         self.g_optimizer.load_state_dict(state['g_optimizer'])
         self.d_optimizer.load_state_dict(state['d_optimizer'])
         self.seed = state.get('seed', 1)
+        self.scores = state.get('scores', [])
         visdom_env = state.get('visdom_env')
         self.current_epoch = epoch
         if self.visualizer is not None and visdom_env and not self.config.NEW_VISDOM_ENV:
