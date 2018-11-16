@@ -40,7 +40,7 @@ class FIDEstimator(object):
         generator.eval()
         act_real = []
         act_fake = []
-        num_batches = self.limit / loader.batch_size + 1
+        num_batches = self.limit // loader.batch_size + 1
         for idx, sample in zip(range(num_batches), loader):
             noise = self.noise_sampler.sample_batch(sample[0].shape[0])
             noise = [c.to(self.generator_device) for c in noise]

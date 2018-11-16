@@ -61,6 +61,7 @@ def train_with_params(config, train_data, valid_data, seed):
     estimator = FIDEstimator(noise_sampler, config=config, limit=10000)
 
     visualizer = Visualizer(config, noise_sampler)
+    visualizer.env_name = config.ENV_NAME
     train_loader = DataLoader(train_data, batch_size=config.BATCH_SIZE, num_workers=config.NUM_WORKERS, shuffle=True)
     valid_loader = DataLoader(valid_data, batch_size=config.BATCH_SIZE, num_workers=config.NUM_WORKERS, shuffle=True)
     trainer = GanTrainer(generator=generator,
@@ -71,8 +72,14 @@ def train_with_params(config, train_data, valid_data, seed):
                          estimator=estimator,
                          seed=seed)
 
-    trainer.train(train_loader, valid_loader, n_epochs=20)
+    trainer.train(train_loader, n_epochs=25, save_interval=5)
+    # validate only last 5 epochs
+    trainer.train(train_loader, valid_loader, n_epochs=5, save_interval=5)
     score = np.mean(trainer.scores[-5:])
+    visualizer.log_text('score: %f' % score)
+    visualizer.log_text('Training time: %f' % trainer.training_time)
+    visualizer.log_text('Validation time: %f' % trainer.validation_time)
+    visualizer.log_text(json.dumps(config))
     return score
 
 
@@ -84,7 +91,6 @@ if __name__ == '__main__':
     training_template = TrainingParamsTemplate()
     config.DEVICE = 'cuda:1'
     config.ESTIMATOR_DEVICE = 'cuda:1'
-    config.ENV_NAME = 'gan_hyperparams'
     transform = ResizeTransform()
     data = Data(config.DATA_PATH, transform)
     train_size = int(0.8 * len(data))
@@ -95,6 +101,7 @@ if __name__ == '__main__':
     randomState = np.random.RandomState(seed)
     for version in range(20):
         config.MODEL_PATH = 'model_' + str(version) + '/'
+        config.ENV_NAME = 'gan_hyperparams_' + str(version)
         state = randomState.get_state()
         generator_params = generate_params(generator_template, randomState)
         discriminator_params = generate_params(discriminator_template, randomState)

@@ -2,6 +2,7 @@ from gan.losses import GeneratorLoss, DiscriminatorLoss
 import torch
 from pathlib import Path
 import traceback
+from timeit import default_timer as timer
 
 
 class GanTrainer(object):
@@ -36,9 +37,11 @@ class GanTrainer(object):
         self.best_cost = 1000.0
         self.current_model_is_best = True
         self.scores = []
+        self.training_time = 0.0
+        self.validation_time = 0.0
         torch.backends.cudnn.deterministic = True
 
-    def train(self, train_loader, valid_loader=None, n_epochs=10):
+    def train(self, train_loader, valid_loader=None, n_epochs=10, save_interval=5):
         with torch.cuda.device(self.device.index):
             try:
                 last_epoch = self.current_epoch
@@ -46,7 +49,8 @@ class GanTrainer(object):
                     self.train_epoch(train_loader)
                     if valid_loader is not None:
                         self.valid_epoch(valid_loader)
-                    if self.current_model_is_best:
+                    if self.current_model_is_best and \
+                            (self.current_epoch == n_epochs or self.current_epoch % save_interval == 0):
                         self.save_checkpoint()
             except Exception as e:
                 traceback_str = '<br>'.join(traceback.format_tb(e.__traceback__))
@@ -61,6 +65,7 @@ class GanTrainer(object):
             self.load_checkpoint(last_epoch)
 
     def train_epoch(self, loader):
+        start = timer()
         torch.manual_seed(self.seed + self.current_epoch)
         self.noise_sampler.manual_seed(self.seed + self.current_epoch)
         self.generator.train()
@@ -107,14 +112,18 @@ class GanTrainer(object):
             # reduce GPU memory usage
             del sample, D_real, D_logit_real, D_loss, D_fake, D_logit_fake
 
+        end = timer()
+        self.training_time += end - start
         if self.visualizer is not None:
             self.visualizer.update_losses(epoch=self.current_epoch,
                                           g_loss=G_train_loss / n_g_steps,
                                           d_loss=D_train_loss / n_d_steps,
                                           type='train')
             self.visualizer.show_generator_results(generator=self.generator)
+            self.visualizer.update_plot(self.current_epoch, end - start, 'training_time')
 
     def valid_epoch(self, loader, compute_losses=False):
+        start = timer()
         if compute_losses:
             self.generator.eval()
             self.discriminator.eval()
@@ -157,6 +166,10 @@ class GanTrainer(object):
                 self.current_model_is_best = True
             if self.visualizer:
                 self.visualizer.update_plot(self.current_epoch, score, 'FID')
+        end = timer()
+        self.validation_time += end - start
+        if self.visualizer:
+            self.visualizer.update_plot(self.current_epoch, end - start, 'validation_time')
 
     def discriminator_on_fake(self, batch_size):
         # noise for unconditional gan is (z,) tuple with random noise vector from uniform distribution [-1, 1]
@@ -192,7 +205,9 @@ class GanTrainer(object):
             'd_optimizer': self.d_optimizer.state_dict(),
             'visdom_env': visdom_env,
             'seed': self.seed,
-            'scores': self.scores
+            'scores': self.scores,
+            'training_time': self.training_time,
+            'validation_time': self.validation_time
         }
         checkpoint_path = self.checkpoint_template % (self.current_epoch,)
         torch.save(state, str(save_path / checkpoint_path))
@@ -214,6 +229,8 @@ class GanTrainer(object):
         self.d_optimizer.load_state_dict(state['d_optimizer'])
         self.seed = state.get('seed', 1)
         self.scores = state.get('scores', [])
+        self.training_time = state.get('training_time', 0.0)
+        self.validation_time = state.get('validation_time', 0.0)
         visdom_env = state.get('visdom_env')
         self.current_epoch = epoch
         if self.visualizer is not None and visdom_env and not self.config.NEW_VISDOM_ENV:
