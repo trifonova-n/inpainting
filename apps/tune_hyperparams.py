@@ -19,6 +19,7 @@ import re
 random_state_file = 'random_state.bin'
 results_file = 'results_df.scv'
 
+
 class GeneratorParamsTemplate(GeneratorParams):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -32,7 +33,7 @@ class GeneratorParamsTemplate(GeneratorParams):
 class DiscriminatorParamsTemplate(DiscriminatorParams):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.start_channels = [16, 32, 64]
+        self.start_channels = [32, 64]
         self.feature_img_size = [2, 4]
         self.channel_scaling_factor = [2, 1.5]
         self.bn_start_idx = [0, 1, 2]
@@ -163,9 +164,13 @@ if __name__ == '__main__':
     randomState = np.random.RandomState(args.seed)
     results_df = pd.DataFrame()
     if args.continue_training:
-        results_df.from_csv(str(model_dir / results_file))
-        randomState = load_random_state(model_dir)
-        start_version = results_df.iloc[-1, :]['version']
+        try:
+            results_df = results_df.from_csv(str(model_dir / results_file))
+            randomState = load_random_state(model_dir)
+            start_version = int(results_df.iloc[-1, :]['version']) + 1
+        except (FileNotFoundError, IndexError) as e:
+            print('No trained models found. Starting from version 0')
+            start_version = 0
 
     for version in range(start_version, args.n_models):
         config.MODEL_PATH = str(model_dir / ('model_' + str(version)))
