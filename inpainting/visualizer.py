@@ -68,6 +68,7 @@ class Visualizer(object):
         print("show_generator_results")
 
     def log_text(self, msg):
+        msg = "<br>".join(msg.split('\n'))
         self.text += "<br>" + msg
         self.vis.text(self.text, win=self.log_win, env=self.env_name)
 

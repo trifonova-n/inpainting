@@ -13,6 +13,8 @@ from pathlib import Path
 from argparse import ArgumentParser
 import pandas as pd
 import pickle
+from torchsummary import summary
+import re
 
 random_state_file = 'random_state.bin'
 results_file = 'results_df.scv'
@@ -87,11 +89,21 @@ def train_with_params(config, train_data, valid_data, seed, n_epochs):
         generator = GeneratorNet(params=config.generator_params).to(device)
         discriminator = DiscriminatorNet(params=config.discriminator_params).to(device)
 
+
         noise_sampler = NoiseSampler(config.Z_SIZE)
         estimator = FIDEstimator(noise_sampler, config=config, limit=10000)
 
         visualizer = Visualizer(config, noise_sampler)
         visualizer.env_name = config.ENV_NAME
+
+        with torch.cuda.device(device.index):
+            s = summary(generator, input_size=(config.generator_params.z_size, ))
+            visualizer.log_text('Generator')
+            visualizer.log_text(str(s))
+            visualizer.log_text('Discriminator')
+            s = summary(discriminator, input_size=(3, 64, 64))
+            visualizer.log_text(str(s))
+
         train_loader = DataLoader(train_data, batch_size=config.BATCH_SIZE, num_workers=config.NUM_WORKERS, shuffle=True)
         valid_loader = DataLoader(valid_data, batch_size=config.BATCH_SIZE, num_workers=config.NUM_WORKERS, shuffle=True)
         trainer = GanTrainer(generator=generator,
@@ -102,18 +114,20 @@ def train_with_params(config, train_data, valid_data, seed, n_epochs):
                              estimator=estimator,
                              seed=seed)
 
-        trainer.train(train_loader, n_epochs=n_epochs - 5, save_interval=5)
+        #trainer.train(train_loader, n_epochs=n_epochs - 5, save_interval=5)
         # validate only last 5 epochs
-        trainer.train(train_loader, valid_loader, n_epochs=5, save_interval=5)
+        trainer.train(train_loader, valid_loader, n_epochs=n_epochs, save_interval=10)
         score = np.mean(trainer.scores[-5:])
         visualizer.log_text('score: %f' % score)
         visualizer.log_text('Training time: %f' % trainer.training_time)
         visualizer.log_text('Validation time: %f' % trainer.validation_time)
         visualizer.log_text(json.dumps(config, indent=2))
     except RuntimeError as e:
-        print(e)
-        torch.cuda.empty_cache()
-        return np.nan, 0, 0
+        if re.search('out of memory', str(e)):
+            print(e)
+            torch.cuda.empty_cache()
+            return np.nan, 0, 0
+        raise e
 
     return score, trainer.training_time, trainer.validation_time
 
@@ -122,11 +136,11 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--device', default='cuda:1')
     parser.add_argument('--model_dir', default='tune_hyperparams')
-    parser.add_argument('--env', default='gan_hyperparams')
+    parser.add_argument('--env', default='hyperparams_gan')
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--continue_training', action='store_true')
-    parser.add_argument('--n_models', type=int, default=2)
-    parser.add_argument('--n_epochs', type=int, default=3)
+    parser.add_argument('--n_models', type=int, default=20)
+    parser.add_argument('--n_epochs', type=int, default=30)
     args = parser.parse_args()
 
     model_dir = Path(args.model_dir)

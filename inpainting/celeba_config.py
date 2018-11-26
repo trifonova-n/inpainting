@@ -2,7 +2,7 @@ from gan.hyperparameters import GeneratorParams, DiscriminatorParams, TrainingPa
 
 
 class Config(dict):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         super().__init__()
         self.__dict__ = self
         self.DATA_PATH = 'data/img_align_celeba'
@@ -17,6 +17,9 @@ class Config(dict):
         self.k = 1  # how many times to update discriminator for 1 generator update
         self.ENV_NAME = "gan"
         self.NEW_VISDOM_ENV=True
-        self.generator_params = GeneratorParams(z_size=self.Z_SIZE)
-        self.discriminator_params = DiscriminatorParams()
-        self.training_params = TrainingParams()
+        for key in kwargs:
+            self[key] = kwargs[key]
+        self.generator_params = GeneratorParams(**kwargs.get('generator_params', {}))
+        self.discriminator_params = DiscriminatorParams(**kwargs.get('discriminator_params', {}))
+        self.training_params = TrainingParams(**kwargs.get('training_params', {}))
+

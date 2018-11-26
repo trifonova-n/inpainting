@@ -3,6 +3,7 @@ import torch.nn as nn
 import numpy as np
 from .layers import up_2, up_4, down_2, down_4
 from .hyperparameters import GeneratorParams, DiscriminatorParams
+import sys
 
 
 class GeneratorNet(torch.nn.Module):
@@ -16,9 +17,9 @@ class GeneratorNet(torch.nn.Module):
         self.hyper_params = params
 
         # layer for linear transformation of noise vector to feature map with min_shape
-        noise_transf_layer = [nn.Linear(params.z_size, np.prod(params.min_shape))]
+        noise_transf_layer = [nn.Linear(params.z_size, int(np.prod(params.min_shape)))]
         if params.bn_start_idx == 0:
-            noise_transf_layer.append(nn.BatchNorm1d(np.prod(params.min_shape)))
+            noise_transf_layer.append(nn.BatchNorm1d(int(np.prod(params.min_shape))))
         noise_transf_layer.append(nn.ReLU())
         self.noise_transf_layer = nn.Sequential(*noise_transf_layer)
 
@@ -78,11 +79,17 @@ class DiscriminatorNet(torch.nn.Module):
             in_channels = out_channels
         self.down_layer = nn.Sequential(*down_layer)
         self.hyper_params.min_shape = (in_channels, params.feature_img_size, params.feature_img_size)
-        self.logit_layer = nn.Linear(np.prod(self.hyper_params.min_shape), 1)
+        dim = int(np.prod(self.hyper_params.min_shape))
+        self.logit_layer = nn.Linear(dim, 1)
         self.out_layer = nn.Sigmoid()
 
     def forward(self, x):
-        out = self.down_layer(x).view(-1, np.prod(self.hyper_params.min_shape))
+        dim = int(np.prod(self.hyper_params.min_shape))
+        out = self.down_layer(x)
+        #sys.stderr.write(str(dim) + '\n')
+        #sys.stderr.write(str(out.shape) + ' ' + str(x.shape) + '\n')
+        out = out.reshape(-1, dim)
+        #sys.stderr.write(str(out.shape) + '\n')
         D_logit = self.logit_layer(out)
         D_prob = self.out_layer(D_logit)
         return D_prob, D_logit

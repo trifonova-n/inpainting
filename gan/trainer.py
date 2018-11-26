@@ -34,8 +34,6 @@ class GanTrainer(object):
         self.checkpoint_template = 'checkpoint_%d.pth'
         self.freezing_thresh = 0.7
         self.seed = seed
-        self.best_cost = 1000.0
-        self.current_model_is_best = True
         self.scores = []
         self.training_time = 0.0
         self.validation_time = 0.0
@@ -49,8 +47,7 @@ class GanTrainer(object):
                     self.train_epoch(train_loader)
                     if valid_loader is not None:
                         self.valid_epoch(valid_loader)
-                    if self.current_model_is_best and \
-                            (self.current_epoch == n_epochs or self.current_epoch % save_interval == 0):
+                    if self.current_epoch == n_epochs or self.current_epoch % save_interval == 0:
                         self.save_checkpoint()
             except Exception as e:
                 traceback_str = '<br>'.join(traceback.format_tb(e.__traceback__))
@@ -160,10 +157,7 @@ class GanTrainer(object):
         if self.estimator:
             score = self.estimator.score(self.generator, loader)
             self.scores.append(score)
-            self.current_model_is_best = False
-            if self.best_cost > score:
-                self.best_cost = score
-                self.current_model_is_best = True
+
             if self.visualizer:
                 self.visualizer.update_plot(self.current_epoch, score, 'FID')
         end = timer()
@@ -195,6 +189,7 @@ class GanTrainer(object):
         torch.save(self.discriminator.state_dict(), str(save_path / discriminator_path))
         visdom_env = ""
         if self.visualizer is not None:
+            self.visualizer.log_text('Saved checkpoint %d' % (self.current_epoch, ))
             visdom_env = self.visualizer.env_name
             self.visualizer.save()
         state = {
@@ -211,6 +206,7 @@ class GanTrainer(object):
         }
         checkpoint_path = self.checkpoint_template % (self.current_epoch,)
         torch.save(state, str(save_path / checkpoint_path))
+        print('Model saved ' + str(save_path / checkpoint_path))
 
     def load_checkpoint(self, epoch):
         """
