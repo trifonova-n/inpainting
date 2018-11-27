@@ -36,6 +36,20 @@ class DiscriminatorParams(Params):
         self.bn_end_idx = self.get('bn_end_idx', -1)
 
 
+class CondGeneratorParams(GeneratorParams):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.y_size = self.get('y_size', 5)
+        self.condition_to_noise = self.get('condition_to_noise', 0.5)
+
+
+class CondDiscriminatorParams(DiscriminatorParams):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.y_size = self.get('y_size', 5)
+        self.condition_to_image = self.get('condition_to_image', 0.5)
+
+
 class TrainingParams(Params):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

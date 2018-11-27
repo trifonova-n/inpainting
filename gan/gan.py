@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from .layers import up_2, up_4, down_2, down_4
+from .layers import up_2, down_2
 from .hyperparameters import GeneratorParams, DiscriminatorParams
 import sys
 
@@ -59,14 +59,16 @@ class DiscriminatorNet(torch.nn.Module):
             params = DiscriminatorParams()
         else:
             params = DiscriminatorParams(**params)
-
         self.hyper_params = params
 
+        # compute number of downscale layers nesessary to transform image
+        # to features of shape feature_img_size x feature_img_size
         n_down_layers = int(round(np.log2(params.input_shape[1] // params.feature_img_size)))
         n_layers = n_down_layers + 1
         if params.bn_end_idx < 0:
             params.bn_end_idx = n_layers + params.bn_end_idx
 
+        # down_layer downscale image by 2 n_down_layers times
         down_layer = [
                 down_2(params.input_shape[0], params.start_channels, batch_norm=(params.bn_start_idx == 0))
             ]
