@@ -105,8 +105,8 @@ def train_with_params(config, train_data, valid_data, seed, n_epochs):
             s = summary(discriminator, input_size=(3, 64, 64))
             visualizer.log_text(str(s))
 
-        train_loader = DataLoader(train_data, batch_size=config.BATCH_SIZE, num_workers=config.NUM_WORKERS, shuffle=True)
-        valid_loader = DataLoader(valid_data, batch_size=config.BATCH_SIZE, num_workers=config.NUM_WORKERS, shuffle=True)
+        train_loader = DataLoader(train_data, batch_size=config.BATCH_SIZE, num_workers=config.NUM_WORKERS, shuffle=True, drop_last=True)
+        valid_loader = DataLoader(valid_data, batch_size=config.BATCH_SIZE, num_workers=config.NUM_WORKERS, shuffle=True, drop_last=True)
         trainer = GanTrainer(generator=generator,
                              discriminator=discriminator,
                              config=config,
@@ -175,7 +175,6 @@ if __name__ == '__main__':
     for version in range(start_version, args.n_models):
         config.MODEL_PATH = str(model_dir / ('model_' + str(version)))
         config.ENV_NAME = args.env + '_' + str(version)
-        state = randomState.get_state()
         generator_params = generate_params(generator_template, randomState)
         discriminator_params = generate_params(discriminator_template, randomState)
         training_params = generate_params(training_template, randomState)

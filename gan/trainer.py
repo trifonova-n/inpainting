@@ -5,6 +5,15 @@ import traceback
 from timeit import default_timer as timer
 
 
+def weights_init(m):
+    classname = m.__class__.__name__
+    if classname.find('Conv') != -1:
+        torch.nn.init.normal_(m.weight.data, 0.0, 0.02)
+    elif classname.find('BatchNorm') != -1:
+        torch.nn.init.normal_(m.weight.data, 1.0, 0.02)
+        torch.nn.init.constant_(m.bias.data, 0)
+
+
 class GanTrainer(object):
     def __init__(self, generator, discriminator, config, noise_sampler, lr=0.0002, visualizer=None, estimator=None, seed=1):
         """
@@ -20,11 +29,14 @@ class GanTrainer(object):
         self.device = torch.device(config.DEVICE)
         self.generator = generator
         self.discriminator = discriminator
+        #self.generator.apply(weights_init)
+        #self.discriminator.apply(weights_init)
+
         self.config = config
         self.g_optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, generator.parameters()),
-                                            lr=lr, betas=(0.5, 0.999), weight_decay=1e-5)
+                                            lr=lr, betas=(0.5, 0.999))
         self.d_optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, discriminator.parameters()),
-                                            lr=lr, betas=(0.5, 0.999), weight_decay=1e-5)
+                                            lr=lr, betas=(0.5, 0.999))
         self.visualizer = visualizer
         self.estimator = estimator
         self.current_epoch = 0
